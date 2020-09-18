@@ -1,0 +1,5 @@
+# Python
+env/
+
+# Repository specific
+.bggcache.json

@@ -1,5 +1,16 @@
-# Python
+# Python virtual environment
 env/
+
+# Next.js build output
+.next
+
+# Node dependency
+node_modules/
+
+# Yarn and npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Repository specific
 .bggcache.json

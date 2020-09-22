@@ -4,12 +4,14 @@ Download and process board game data from BoardGameGeek (BGG).
 
 import itertools
 import json
+import sys
 from contextlib import contextmanager
 from io import BytesIO
 from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, TypeVar
 
 import click
 import requests
+from elasticsearch import Elasticsearch
 from lxml import etree
 from lxml.etree import _Element as XMLElement
 
@@ -19,6 +21,8 @@ BGG_TOP_RANKED_GAMES_URL = "https://boardgamegeek.com/browse/boardgame/page/{pag
 BGG_THING_API_URL = "https://boardgamegeek.com/xmlapi2/thing?stats=1&id={ids}"
 
 API_BATCH_SIZE = 1000
+
+ES_INDEX_NAME = "boardgames"
 
 
 class Game(NamedTuple):
@@ -40,6 +44,14 @@ class Game(NamedTuple):
     rating: float
     weight: float
     year_published: int
+
+
+def die(msg: str) -> None:
+    """
+    Die with an stderr error message.
+    """
+    print(msg, file=sys.stderr)
+    sys.exit(1)
 
 
 def chunked(iterable: Iterable[T], n: int) -> Iterable[List[T]]:
@@ -209,9 +221,7 @@ def get_game_details(cache: PageCache, ids: List[int]) -> List[Game]:
                 Game(
                     id=int(_get(item, None, "id")),
                     name=_get(item, "name[@type='primary']", "value"),
-                    thumbnail=(
-                        _get_opt(item, "thumbnail") if item.find("thumbnail") else None
-                    ),
+                    thumbnail=_get_opt(item, "thumbnail"),
                     description=_get_opt(item, "description"),
                     min_players=int(_get(item, "minplayers", "value")),
                     max_players=int(_get(item, "maxplayers", "value")),
@@ -237,7 +247,22 @@ def get_game_details(cache: PageCache, ids: List[int]) -> List[Game]:
     return games
 
 
-@click.command()
+@click.group()
+def main() -> None:
+    """
+    Scrape board game metdata from BoardGameGeek (BGG) and ingest it into Elasticsearch.
+    """
+    pass
+
+
+@main.command("run")
+@click.option(
+    "--connection",
+    help="Elastic search connection string.",
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Skip ingesting into the database (scraping only)."
+)
 @click.option(
     "--cache",
     "cache_path",
@@ -245,22 +270,72 @@ def get_game_details(cache: PageCache, ids: List[int]) -> List[Game]:
     type=click.Path(),
     help="BGG cache file path.",
 )
-@click.option(
-    "--output",
-    "output_path",
-    type=click.Path(),
-    help="File path for output scraped BGG json.",
-)
-def main(cache_path: str, output_path: Optional[str]) -> None:
+def run_ingest(connection: Optional[str], dry_run: bool, cache_path: str) -> None:
     """
     Scrape board game metadata from BoardGameGeek (BGG).
     """
+    if not connection and not dry_run:
+        die(
+            "Error: at least one of options '--connection' or '--dry-run' are required."
+        )
+
+    es = Elasticsearch(connection) if connection else None
+
     with open_cache(cache_path) as cache:
+        print("Scraping BGG metadata...")
         ids = get_game_ids(cache)
         games = get_game_details(cache, ids)
-        if output_path:
-            with open(output_path, "w") as handle:
-                json.dump([game._asdict() for game in games], handle)
+
+    print("Ingesting BGG metadata into elastic search...")
+    for i, game in enumerate(games):
+        print(
+            f"{'(dry run)' if dry_run else ''}"
+            f"Ingesting '{game.name}' ({i + 1}/{len(games)})..."
+        )
+        if not dry_run:
+            assert es is not None, "elasticsearch connection required"
+            es.index(index=ES_INDEX_NAME, id=game.id, body=game._asdict())
+
+    if not dry_run:
+        assert es is not None, "elasticsearch connection required"
+        es.indices.refresh(index=ES_INDEX_NAME)
+
+
+@main.command("query")
+@click.argument("query_string")
+@click.option(
+    "--connection",
+    required=True,
+    help="Elastic search connection string.",
+)
+@click.option("--offset", default=0, help="Offset in query results.")
+@click.option("--limit", default=10, help="Number of query results.")
+def run_query(query_string: str, connection: str, offset: int, limit: int) -> None:
+    """
+    Query Elasticsearch for ingested BoardGameGeek (BGG) metadata.
+    """
+    es = Elasticsearch(connection)
+    res = es.search(
+        index=ES_INDEX_NAME,
+        body={
+            "from": offset,
+            "size": limit,
+            "query": {
+                "query_string": {
+                    "query": query_string,
+                    "default_field": "name",
+                },
+            },
+        },
+    )
+
+    total = res["hits"]["total"]["value"]
+    for i, hit in enumerate(res["hits"]["hits"]):
+        if i != 0:
+            print()
+        print(f"Hit {i + 1 + offset}/{total}:")
+        for key, value in hit["_source"].items():
+            print(f"\t{key}: {value}")
 
 
 if __name__ == "__main__":

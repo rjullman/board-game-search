@@ -34,7 +34,6 @@ class GameBasicMetadata(NamedTuple):
 
     id: int  # BGG board game id.
     slug: str  # BGG board game slug.
-    buy_link: Optional[str]
 
 
 class EntityLink(NamedTuple):
@@ -66,7 +65,6 @@ class Game(NamedTuple):
     rating: float
     weight: float
     year_published: int
-    buy_link: Optional[str]
     categories: List[EntityLink]
     mechanics: List[EntityLink]
     families: List[EntityLink]
@@ -219,18 +217,13 @@ def get_game_basic_metadata(cache: PageCache) -> List[GameBasicMetadata]:
                 row, "td[@class='collection_thumbnail']/a[@href]", "href"
             )
             id_str, slug = bgg_page_link.split("/")[2:4]
-            buy_link = xml_get_opt(
-                row,
-                "td[@class='collection_shop']/div/div/div/a[@class='ulprice']",
-                "href",
-            )
             rank = xml_get_opt(row, "td[@class='collection_rank']/a[@name]", "name")
 
             if rank is None:
                 return metas
 
             metas.append(
-                GameBasicMetadata(id=int(id_str), slug=slug, buy_link=buy_link)
+                GameBasicMetadata(id=int(id_str), slug=slug)
             )
 
     raise ValueError("Unreachable")
@@ -294,7 +287,6 @@ def get_game_full_metadata(
                         xml_get(item, "statistics/ratings/averageweight", "value")
                     ),
                     year_published=int(xml_get(item, "yearpublished", "value")),
-                    buy_link=id_to_meta[item_id].buy_link,
                     categories=get_links(item, "boardgamecategory"),
                     mechanics=get_links(item, "boardgamemechanic"),
                     families=get_links(item, "boardgamefamily"),

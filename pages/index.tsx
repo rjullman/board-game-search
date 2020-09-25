@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Tooltip } from "react-tippy";
+import classnames from "classnames";
 
 import { search, Game } from "../lib/api";
 
@@ -19,54 +20,195 @@ const LabeledStat: React.FC<{
   </div>
 );
 
+const AccordianSection: React.FC<{
+  title: string;
+}> = ({ title, children }) => {
+  const [tagContainer, setTagContainer] = useState<HTMLElement | null>(null);
+  const [scrollHeight, setScrollHeight] = useState<number>(0);
+  const [overflows, setOverflows] = useState<boolean>(true);
+  const [expanded, setExpanded] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (tagContainer) {
+      setScrollHeight(tagContainer.scrollHeight);
+      setOverflows(tagContainer.scrollHeight > tagContainer.clientHeight);
+    }
+  }, [tagContainer]);
+
+  const toggleAccordian = () => {
+    if (overflows) {
+      setExpanded(!expanded);
+    }
+  };
+
+  const show = expanded || !overflows;
+
+  return (
+    <div className="py-2" onClick={toggleAccordian}>
+      <h3 className="pb-1 text-lg font-bold">{title}</h3>
+      <div
+        ref={setTagContainer}
+        className={classnames(
+          "relative",
+          "overflow-hidden",
+          "transition-all ease-in-out duration-500"
+        )}
+        style={{ maxHeight: show ? `${scrollHeight + 25}px` : "5rem" }}
+      >
+        <div
+          className={classnames(
+            "absolute inset-0 w-100 h-100",
+            "bg-gradient-to-b from-transparent to-white",
+            "transition ease-in-out",
+            show ? "opacity-0" : "opacity-100"
+          )}
+        ></div>
+        {children}
+      </div>
+    </div>
+  );
+};
+
+const TagList: React.FC<{
+  title: string;
+  tags: { id: number; name: string }[];
+}> = ({ title, tags }) => {
+  if (tags.length === 0) {
+    return <></>;
+  }
+  return (
+    <AccordianSection title={title}>
+      {tags.map((tag) => (
+        <div
+          key={tag.id}
+          className={classnames(
+            "inline-block py-1 px-3 mx-1 my-1",
+            "rounded-full bg-indigo-900 text-xs text-white font-semibold"
+          )}
+        >
+          {tag.name}
+        </div>
+      ))}
+    </AccordianSection>
+  );
+};
+
 const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
+  const buyLink = `https://boardgamegeek.com/boardgame/${game.id}/${game.slug}#buyacopy`;
   return (
     <div
       key={game.id}
-      className="flex flex-row bg-white rounded overflow-hidden shadow-lg my-3"
+      className="bg-white rounded overflow-hidden shadow-lg my-3"
     >
-      <div className="flex-shrink-0">
-        <img
-          src={game.thumbnail}
-          className="w-32 h-32 object-cover object-top"
-        />
+      <div className="flex flex-row">
+        <div className="flex-shrink-0">
+          <div className="w-32 h-32 flex">
+            {game.thumbnail ? (
+              <img
+                src={game.thumbnail}
+                className="w-32 h-32 object-cover object-top rounded-br"
+              />
+            ) : (
+              <svg
+                className="w-24 h-24 m-auto text-indigo-800"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            )}
+          </div>
+        </div>
+        <div className="flex-grow p-2">
+          <div className="flex px-3 py-1">
+            <h2 className="flex-grow text-xl font-semibold truncate text-gray-800">
+              {game.name} ({game.year_published})
+            </h2>
+            <div>
+              <button
+                className={classnames(
+                  "flex-grow-0 flex-shrink-0",
+                  "py-1 px-2",
+                  "bg-indigo-800 hover:bg-indigo-900 text-white",
+                  "rounded",
+                  "text-sm font-bold"
+                )}
+              >
+                <a className="inline-flex items-center" href={buyLink}>
+                  <svg
+                    className="fill-current w-3 h-3 mr-1"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>Buy a Copy</span>
+                </a>
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-row divide-x py-1">
+            <LabeledStat
+              label="rank"
+              stat={game.rank}
+              sublabel={`rated ${game.rating.toFixed(1)}/10`}
+            />
+            <LabeledStat
+              label="players"
+              stat={
+                game.min_players != game.max_players
+                  ? `${game.min_players}–${game.max_players}`
+                  : game.min_players
+              }
+              sublabel={game.min_age != 0 ? `age ${game.min_age}+` : ""}
+            />
+            <LabeledStat
+              label="playtime"
+              stat={
+                game.min_playtime != game.max_playtime
+                  ? `${game.min_playtime}–${game.max_playtime}`
+                  : game.min_playtime
+              }
+              sublabel="mins"
+            />
+            <LabeledStat
+              label="weight"
+              stat={game.weight == 0 ? "?" : `${game.weight.toFixed(1)}/5`}
+              sublabel="complexity"
+            />
+          </div>
+        </div>
       </div>
-      <div className="flex-grow p-2">
-        <div className="px-3">
-          <h2 className="text-xl font-semibold truncate text-gray-800">
-            {game.name} ({game.year_published})
-          </h2>
-        </div>
-        <div className="flex flex-row divide-x py-1">
-          <LabeledStat
-            label="rank"
-            stat={game.rank}
-            sublabel={`rated ${game.rating.toFixed(1)}/10`}
-          />
-          <LabeledStat
-            label="players"
-            stat={
-              game.min_players != game.max_players
-                ? `${game.min_players}–${game.max_players}`
-                : game.min_players
-            }
-            sublabel={game.min_age != 0 ? `age ${game.min_age}+` : ""}
-          />
-          <LabeledStat
-            label="playtime"
-            stat={
-              game.min_playtime != game.max_playtime
-                ? `${game.min_playtime}–${game.max_playtime}`
-                : game.min_playtime
-            }
-            sublabel="mins"
-          />
-          <LabeledStat
-            label="weight"
-            stat={game.weight == 0 ? "?" : `${game.weight.toFixed(1)}/5`}
-            sublabel="complexity"
-          />
-        </div>
+      <div className="px-5 pb-2 divide-y-4 divide-dashed">
+        <AccordianSection title="Description">
+          <div>
+            {(game.description || "Missing game description.")
+              .split("&#10;")
+              .filter((elem) => elem.trim())
+              .map((text, i, arr) => (
+                <p
+                  key={i}
+                  className="py-1 first:pt-0 last:pb-0"
+                  dangerouslySetInnerHTML={{ __html: text }}
+                />
+              ))}
+          </div>
+        </AccordianSection>
+        <TagList title="Mechanics" tags={game.mechanics} />
+        <TagList title="Themes" tags={game.categories} />
+        <TagList title="Expansions" tags={game.expansions} />
       </div>
     </div>
   );
@@ -108,7 +250,7 @@ const CheckboxGroup: React.FC<{
         {label} {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
       </div>
       {options.map((option) => (
-        <label className="flex items-center">
+        <label key={option} className="flex items-center">
           <input type="checkbox" className="form-checkbox" />
           <span className="ml-2">{option}</span>
         </label>
@@ -126,9 +268,9 @@ const FilterIcon: React.FC<{ className?: string }> = ({ className }) => (
     stroke="currentColor"
   >
     <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
       d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
     />
   </svg>
@@ -157,7 +299,7 @@ const Combobox: React.FC<{}> = () => {
         />
       </div>
       <div className="flex flex-row">
-        <div className="flex-grow-0 w-48 mx-3">
+        <div className="flex-grow-0 flex-shrink-0 w-48 mx-3">
           <div className="sidebar pt-4 pb-2 w-100">
             <div className="flex flex-row items-center">
               <FilterIcon className="w-5 h-5 mr-2" />
@@ -190,7 +332,7 @@ const Combobox: React.FC<{}> = () => {
         </div>
         <div className="flex-grow">
           {games.map((game) => (
-            <GameDisplay game={game} />
+            <GameDisplay key={game.id} game={game} />
           ))}
         </div>
       </div>

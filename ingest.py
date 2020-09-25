@@ -25,12 +25,34 @@ API_BATCH_SIZE = 1000
 ES_INDEX_NAME = "boardgames"
 
 
+class GameBasicMetadata(NamedTuple):
+    """
+    Basic metadata for a BGG board game.
+
+    This metadata is scraped during game discovery before populating other metdata.
+    """
+
+    id: int  # BGG board game id.
+    slug: str  # BGG board game slug.
+    buy_link: Optional[str]
+
+
+class EntityLink(NamedTuple):
+    """
+    Link to a BGG entity (category, mechanic, family, expansion, etc.).
+    """
+
+    id: int
+    name: str
+
+
 class Game(NamedTuple):
     """
     Metadata for a BGG board game.
     """
 
     id: int
+    slug: str
     name: str
     thumbnail: Optional[str]
     description: Optional[str]
@@ -44,6 +66,11 @@ class Game(NamedTuple):
     rating: float
     weight: float
     year_published: int
+    buy_link: Optional[str]
+    categories: List[EntityLink]
+    mechanics: List[EntityLink]
+    families: List[EntityLink]
+    expansions: List[EntityLink]
 
 
 def die(msg: str) -> None:
@@ -71,6 +98,41 @@ def chunked(iterable: Iterable[T], n: int) -> Iterable[List[T]]:
             yield chunk
         else:
             break
+
+
+def xml_get_opt(
+    item: XMLElement, path: Optional[str] = None, attr: Optional[str] = None
+) -> Optional[str]:
+    """
+    Helper for LXML to get an attribute at a path from an XML element.
+
+    Returns None if the path or attribute do not exist.
+    """
+    elem = item.find(path) if path else item
+    if elem is None:
+        return None
+    ret = elem.get(attr) if attr else elem.text
+    if ret is None:
+        return None
+    if isinstance(ret, bytes):
+        raise ValueError("Expected result to be a str not bytes.")
+    return ret
+
+
+def xml_get(
+    item: XMLElement, path: Optional[str] = None, attr: Optional[str] = None
+) -> str:
+    """
+    Helper for LXML to get an attribute at a path from an XML element.
+
+    Raises a ValueError if the path or attribute do not exist.
+    """
+    ret = xml_get_opt(item, path, attr)
+    if ret is None:
+        if path and item.find(path) is None:
+            raise ValueError(f"Could not find XML path '{path}'.")
+        raise ValueError(f"Could not find XML attr '{attr}' at path '{path}'.")
+    return ret
 
 
 class PageCache:
@@ -136,11 +198,11 @@ def open_cache(filename: str) -> Iterator[PageCache]:
     cache.save()
 
 
-def get_game_ids(cache: PageCache) -> List[int]:
+def get_game_basic_metadata(cache: PageCache) -> List[GameBasicMetadata]:
     """
-    Gets the BGG id for all ranked games on BGG.
+    Gets the BGG basic metadata for all ranked games on BGG.
     """
-    game_ids: List[int] = []
+    metas: List[GameBasicMetadata] = []
     page_num = 0
     while True:
         page_num += 1
@@ -148,68 +210,57 @@ def get_game_ids(cache: PageCache) -> List[int]:
         parsed = etree.parse(
             BytesIO(page_str.encode()), etree.XMLParser(encoding="utf-8", recover=True)
         )
-        links = parsed.xpath("//td[@class='collection_thumbnail']/a[@href]")
-        ranks = parsed.xpath("//td[@class='collection_rank']")
-        assert isinstance(links, list)
-        assert isinstance(ranks, list)
-        assert len(links) == len(ranks), "Did not find a rank for each game."
+        rows = parsed.xpath("//tr[@id='row_']")
+        assert isinstance(rows, list)
 
-        for link, rank in zip(links, ranks):
-            assert isinstance(link, XMLElement)
-            assert isinstance(rank, XMLElement)
+        for row in rows:
+            assert isinstance(row, XMLElement)
+            bgg_page_link = xml_get(
+                row, "td[@class='collection_thumbnail']/a[@href]", "href"
+            )
+            id_str, slug = bgg_page_link.split("/")[2:4]
+            buy_link = xml_get_opt(
+                row,
+                "td[@class='collection_shop']/div/div/div/a[@class='ulprice']",
+                "href",
+            )
+            rank = xml_get_opt(row, "td[@class='collection_rank']/a[@name]", "name")
 
-            if not rank.text:
-                raise ValueError("Scraped BGG element missing rank text.")
+            if rank is None:
+                return metas
 
-            if rank.text.strip() == "N/A":
-                return game_ids
-
-            href = link.get("href")
-            if not href:
-                raise ValueError("Scraped BGG element missing board game id.")
-
-            try:
-                game_ids.append(int(href.split("/")[2]))
-            except ValueError as e:
-                raise ValueError(
-                    f"URL ('{href}') with unparsable board game id."
-                ) from e
+            metas.append(
+                GameBasicMetadata(id=int(id_str), slug=slug, buy_link=buy_link)
+            )
 
     raise ValueError("Unreachable")
 
 
-def get_game_details(cache: PageCache, ids: List[int]) -> List[Game]:
+def get_game_full_metadata(
+    cache: PageCache, metas: List[GameBasicMetadata]
+) -> List[Game]:
     """
     Gets the BGG game metadata the given BGG game ids.
     """
 
-    def _get_opt(
-        item: XMLElement, path: Optional[str] = None, attr: Optional[str] = None
-    ) -> Optional[str]:
-        elem = item.find(path) if path else item
-        if elem is None:
-            return None
-        ret = elem.get(attr) if attr else elem.text
-        if ret is None:
-            return None
-        if isinstance(ret, bytes):
-            raise ValueError("Expected result to be a str not bytes.")
-        return ret
-
-    def _get(
-        item: XMLElement, path: Optional[str] = None, attr: Optional[str] = None
-    ) -> str:
-        ret = _get_opt(item, path, attr)
-        if ret is None:
-            if path and item.find(path) is None:
-                raise ValueError(f"Could not find XML path '{path}'.")
-            raise ValueError(f"Could not find XML attr '{attr}' at path '{path}'.")
+    def get_links(item: XMLElement, link_type: str) -> List[EntityLink]:
+        links = item.xpath(f"link[@type='{link_type}']")
+        assert isinstance(links, list)
+        ret = []
+        for link in links:
+            assert isinstance(link, XMLElement)
+            ret.append(
+                EntityLink(
+                    id=int(xml_get(link, None, "id")), name=xml_get(link, None, "value")
+                )
+            )
         return ret
 
     games = []
-    for chunk in chunked(ids, API_BATCH_SIZE):
+    for chunk in chunked(metas, API_BATCH_SIZE):
+        id_to_meta = {meta.id: meta for meta in chunk}
         page_str = cache.fetch(
-            BGG_THING_API_URL.format(ids=",".join(str(id) for id in chunk))
+            BGG_THING_API_URL.format(ids=",".join(str(id) for id in id_to_meta.keys()))
         )
         parsed = etree.parse(BytesIO(page_str.encode()))
         items = parsed.xpath("//item[@type='boardgame']")
@@ -217,30 +268,37 @@ def get_game_details(cache: PageCache, ids: List[int]) -> List[Game]:
 
         for item in items:
             assert isinstance(item, XMLElement)
+            item_id = int(xml_get(item, None, "id"))
             games.append(
                 Game(
-                    id=int(_get(item, None, "id")),
-                    name=_get(item, "name[@type='primary']", "value"),
-                    thumbnail=_get_opt(item, "thumbnail"),
-                    description=_get_opt(item, "description"),
-                    min_players=int(_get(item, "minplayers", "value")),
-                    max_players=int(_get(item, "maxplayers", "value")),
-                    expected_playtime=int(_get(item, "playingtime", "value")),
-                    min_playtime=int(_get(item, "minplaytime", "value")),
-                    max_playtime=int(_get(item, "maxplaytime", "value")),
-                    min_age=int(_get(item, "minage", "value")),
+                    id=item_id,
+                    slug=id_to_meta[item_id].slug,
+                    name=xml_get(item, "name[@type='primary']", "value"),
+                    thumbnail=xml_get_opt(item, "thumbnail"),
+                    description=xml_get_opt(item, "description"),
+                    min_players=int(xml_get(item, "minplayers", "value")),
+                    max_players=int(xml_get(item, "maxplayers", "value")),
+                    expected_playtime=int(xml_get(item, "playingtime", "value")),
+                    min_playtime=int(xml_get(item, "minplaytime", "value")),
+                    max_playtime=int(xml_get(item, "maxplaytime", "value")),
+                    min_age=int(xml_get(item, "minage", "value")),
                     rank=int(
-                        _get(
+                        xml_get(
                             item,
                             "statistics/ratings/ranks/rank[@name='boardgame']",
                             "value",
                         )
                     ),
-                    rating=float(_get(item, "statistics/ratings/average", "value")),
+                    rating=float(xml_get(item, "statistics/ratings/average", "value")),
                     weight=float(
-                        _get(item, "statistics/ratings/averageweight", "value")
+                        xml_get(item, "statistics/ratings/averageweight", "value")
                     ),
-                    year_published=int(_get(item, "yearpublished", "value")),
+                    year_published=int(xml_get(item, "yearpublished", "value")),
+                    buy_link=id_to_meta[item_id].buy_link,
+                    categories=get_links(item, "boardgamecategory"),
+                    mechanics=get_links(item, "boardgamemechanic"),
+                    families=get_links(item, "boardgamefamily"),
+                    expansions=get_links(item, "boardgameexpansion"),
                 )
             )
 
@@ -283,8 +341,8 @@ def run_ingest(connection: Optional[str], dry_run: bool, cache_path: str) -> Non
 
     with open_cache(cache_path) as cache:
         print("Scraping BGG metadata...")
-        ids = get_game_ids(cache)
-        games = get_game_details(cache, ids)
+        metas = get_game_basic_metadata(cache)
+        games = get_game_full_metadata(cache, metas)
 
     print("Ingesting BGG metadata into elastic search...")
     for i, game in enumerate(games):
@@ -292,9 +350,13 @@ def run_ingest(connection: Optional[str], dry_run: bool, cache_path: str) -> Non
             f"{'(dry run)' if dry_run else ''} "
             f"Ingesting '{game.name}' ({i + 1}/{len(games)})..."
         )
+
         if not dry_run:
             assert es is not None, "elasticsearch connection required"
-            es.index(index=ES_INDEX_NAME, id=game.id, body=game._asdict())
+            body = game._asdict()
+            for key in ["categories", "families", "mechanics", "expansions"]:
+                body[key] = [link._asdict() for link in body[key]]
+            es.index(index=ES_INDEX_NAME, id=game.id, body=body)
 
     if not dry_run:
         assert es is not None, "elasticsearch connection required"

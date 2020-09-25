@@ -289,7 +289,7 @@ def run_ingest(connection: Optional[str], dry_run: bool, cache_path: str) -> Non
     print("Ingesting BGG metadata into elastic search...")
     for i, game in enumerate(games):
         print(
-            f"{'(dry run)' if dry_run else ''}"
+            f"{'(dry run)' if dry_run else ''} "
             f"Ingesting '{game.name}' ({i + 1}/{len(games)})..."
         )
         if not dry_run:

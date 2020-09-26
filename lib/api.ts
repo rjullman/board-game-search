@@ -1,3 +1,8 @@
+type EntityLink = {
+  id: number;
+  name: string;
+};
+
 export type Game = {
   id: number;
   slug: string;
@@ -14,10 +19,10 @@ export type Game = {
   weight: number;
   rating: number;
   year_published: number;
-  categories: { id: number; name: string }[];
-  mechanics: { id: number; name: string }[];
-  families: { id: number; name: string }[];
-  expansions: { id: number; name: string }[];
+  categories: EntityLink[];
+  mechanics: EntityLink[];
+  families: EntityLink[];
+  expansions: EntityLink[];
 };
 
 type Hit = {

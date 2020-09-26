@@ -22,7 +22,8 @@ const LabeledStat: React.FC<{
 
 const AccordianSection: React.FC<{
   title: string;
-}> = ({ title, children }) => {
+  tooltip?: string;
+}> = ({ title, tooltip, children }) => {
   const [tagContainer, setTagContainer] = useState<HTMLElement | null>(null);
   const [scrollHeight, setScrollHeight] = useState<number>(0);
   const [overflows, setOverflows] = useState<boolean>(true);
@@ -45,7 +46,10 @@ const AccordianSection: React.FC<{
 
   return (
     <div className="py-2" onClick={toggleAccordian}>
-      <h3 className="pb-1 text-lg font-bold">{title}</h3>
+      <div className="flex pb-1 items-center">
+        <h3 className="text-lg font-bold">{title}</h3>
+        {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
+      </div>
       <div
         ref={setTagContainer}
         className={classnames(
@@ -72,12 +76,13 @@ const AccordianSection: React.FC<{
 const TagList: React.FC<{
   title: string;
   tags: { id: number; name: string }[];
-}> = ({ title, tags }) => {
+  tooltip?: string;
+}> = ({ title, tags, tooltip }) => {
   if (tags.length === 0) {
     return <></>;
   }
   return (
-    <AccordianSection title={title}>
+    <AccordianSection title={title} tooltip={tooltip}>
       {tags.map((tag) => (
         <div
           key={tag.id}
@@ -206,9 +211,21 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
               ))}
           </div>
         </AccordianSection>
-        <TagList title="Mechanics" tags={game.mechanics} />
-        <TagList title="Themes" tags={game.categories} />
-        <TagList title="Expansions" tags={game.expansions} />
+        <TagList
+          title="Mechanics"
+          tags={game.mechanics}
+          tooltip="How you interact with the game. Games with similar mechanics will have similar rules, objectives, and challenges."
+        />
+        <TagList
+          title="Themes"
+          tags={game.categories}
+          tooltip="How the game looks and feels. Games with similar themes may have a similar graphical style, form factor, or plot."
+        />
+        <TagList
+          title="Expansions"
+          tags={game.expansions}
+          tooltip="Extensions to the game. This includes developer, fan, and promotional expansions some of which are no longer available for purchase."
+        />
       </div>
     </div>
   );
@@ -239,22 +256,54 @@ const HelpTooltip: React.FC = ({ children }) => {
   );
 };
 
-const CheckboxGroup: React.FC<{
+const FilterGroup: React.FC<{
+  type: "checkbox" | "radio" | "select";
   label: string;
   options: string[];
   tooltip?: string;
-}> = ({ label, options, tooltip }) => {
+}> = ({ type, label, options, tooltip }) => {
+  const formClassname = () => {
+    switch (type) {
+      case "checkbox":
+        return "form-checkbox";
+      case "radio":
+        return "form-radio";
+      case "select":
+        return "form-select";
+      default:
+        throw new Error(`Unknown filter group type "${type}".`);
+    }
+  };
+  const form = () => {
+    switch (type) {
+      case "checkbox":
+      // fallthrough
+      case "radio":
+        return options.map((option) => (
+          <label key={option} className="flex items-center">
+            <input type={type} className={formClassname()} name={label} />
+            <span className="ml-2">{option}</span>
+          </label>
+        ));
+      case "select":
+        return (
+          <select className="form-select block mt-1 text-sm">
+            {options.map((option) => (
+              <option>{option}</option>
+            ))}
+            ;
+          </select>
+        );
+      default:
+        throw new Error(`Unknown filter group type "${type}".`);
+    }
+  };
   return (
     <div className="flex flex-col mt-3">
       <div className="flex items-center text-base font-bold">
         {label} {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
       </div>
-      {options.map((option) => (
-        <label key={option} className="flex items-center">
-          <input type="checkbox" className="form-checkbox" />
-          <span className="ml-2">{option}</span>
-        </label>
-      ))}
+      {form()}
     </div>
   );
 };
@@ -299,26 +348,47 @@ const Combobox: React.FC<{}> = () => {
         />
       </div>
       <div className="flex flex-row">
-        <div className="flex-grow-0 flex-shrink-0 w-48 mx-3">
+        <div className="flex-grow-0 flex-shrink-0 w-48 mr-4">
           <div className="sidebar pt-4 pb-2 w-100">
             <div className="flex flex-row items-center">
               <FilterIcon className="w-5 h-5 mr-2" />
               <div className="text-lg font-bold">Filters</div>
             </div>
-            <CheckboxGroup
+            <FilterGroup
+              type="select"
+              label="Sort By"
+              options={[
+                "Relevance",
+                "Rating (dec)",
+                "Rating (inc)",
+                "Weight (dec)",
+                "Weight (inc)",
+              ]}
+            />
+            <FilterGroup
+              type="radio"
+              label="Rating"
+              options={["any", "2.0+", "5.0+", "8.0+"]}
+              tooltip="BoardGameGeek user rating of game enjoyability and replayability."
+            />
+            <FilterGroup
+              type="checkbox"
               label="Age"
               options={["0–4", "5–10", "11–17", "18–20", "21+"]}
             />
-            <CheckboxGroup
+            <FilterGroup
+              type="checkbox"
               label="Weight"
               options={["1.0–2.0", "2.0–3.0", "3.0-4.0", "4.0–5.0"]}
               tooltip='BoardGameGeek user rating of how difficult the game is to learn and play. Lower rating ("lighter") means easier.'
             />
-            <CheckboxGroup
+            <FilterGroup
+              type="checkbox"
               label="Playtime"
               options={["0–30 mins", "30–60 mins", "60–120 mins", "120+ mins"]}
             />
-            <CheckboxGroup
+            <FilterGroup
+              type="checkbox"
               label="Players"
               options={[
                 "1 Player",

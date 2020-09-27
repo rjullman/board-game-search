@@ -9,6 +9,7 @@ import {
   StringParam,
   DelimitedArrayParam,
 } from "use-query-params";
+import Sticky from "react-stickynode";
 
 import { search, Game, SearchFilters, Filters } from "../lib/api";
 
@@ -455,104 +456,111 @@ const Combobox: React.FC<{}> = () => {
       </div>
       <div className="flex flex-row">
         <div className="flex-grow-0 flex-shrink-0 w-48 mr-4">
-          <div className="sidebar pt-4 pb-2 w-100">
-            <div className="flex flex-row items-center">
-              <FilterIcon className="w-5 h-5 mr-2" />
-              <div className="text-lg font-bold">Filters</div>
+          <Sticky>
+            <div className="sidebar py-4 w-100">
+              <div className="flex flex-row items-center">
+                <FilterIcon className="w-5 h-5 mr-2" />
+                <div className="text-lg font-bold">Filters</div>
+              </div>
+              <FilterGroup
+                type="select"
+                label="Sort By"
+                options={[
+                  "Relevance",
+                  "Rating (dec)",
+                  "Rating (inc)",
+                  "Weight (dec)",
+                  "Weight (inc)",
+                ]}
+                values={[
+                  Filters.SortByRelevance,
+                  Filters.SortByRatingDec,
+                  Filters.SortByRatingInc,
+                  Filters.SortByWeightDec,
+                  Filters.SortByWeightInc,
+                ]}
+                selected={[query.sort]}
+                onChange={(vals) => setQuery({ sort: vals[0] })}
+              />
+              <FilterGroup
+                type="radio"
+                label="Rating"
+                options={[
+                  Filters.RatingAny,
+                  Filters.Rating2Plus,
+                  Filters.Rating5Plus,
+                  Filters.Rating8Plus,
+                ]}
+                tooltip="BoardGameGeek user rating of game enjoyability and replayability."
+                selected={[query.rating]}
+                onChange={(vals) => setQuery({ rating: vals[0] })}
+              />
+              <FilterGroup
+                type="checkbox"
+                label="Age"
+                options={[
+                  Filters.Age0To4,
+                  Filters.Age5To10,
+                  Filters.Age11To17,
+                  Filters.Age18To20,
+                  Filters.Age21Plus,
+                ]}
+                selected={query.age}
+                onChange={(vals) => setQuery({ age: vals })}
+              />
+              <FilterGroup
+                type="checkbox"
+                label="Weight"
+                options={[
+                  Filters.Weight1to2,
+                  Filters.Weight2to3,
+                  Filters.Weight3to4,
+                  Filters.Weight4to5,
+                ]}
+                tooltip='BoardGameGeek user rating of how difficult the game is to learn and play. Lower rating ("lighter") means easier.'
+                selected={query.weight}
+                onChange={(vals) => setQuery({ weight: vals })}
+              />
+              <FilterGroup
+                type="checkbox"
+                label="Playtime"
+                options={[
+                  "0–30 mins",
+                  "30–60 mins",
+                  "60–120 mins",
+                  "120+ mins",
+                ]}
+                values={[
+                  Filters.Playtime0to30,
+                  Filters.Playtime30to60,
+                  Filters.Playtime60to120,
+                  Filters.Playtime120Plus,
+                ]}
+                selected={query.playtime}
+                onChange={(vals) => setQuery({ playtime: vals })}
+              />
+              <FilterGroup
+                type="checkbox"
+                label="Players"
+                options={[
+                  "1 Player",
+                  "2 Player",
+                  "3 Player",
+                  "4 Player",
+                  "5+ Player",
+                ]}
+                values={[
+                  Filters.Players1,
+                  Filters.Players2,
+                  Filters.Players3,
+                  Filters.Players4,
+                  Filters.Players5Plus,
+                ]}
+                selected={query.players}
+                onChange={(vals) => setQuery({ players: vals })}
+              />
             </div>
-            <FilterGroup
-              type="select"
-              label="Sort By"
-              options={[
-                "Relevance",
-                "Rating (dec)",
-                "Rating (inc)",
-                "Weight (dec)",
-                "Weight (inc)",
-              ]}
-              values={[
-                Filters.SortByRelevance,
-                Filters.SortByRatingDec,
-                Filters.SortByRatingInc,
-                Filters.SortByWeightDec,
-                Filters.SortByWeightInc,
-              ]}
-              selected={[query.sort]}
-              onChange={(vals) => setQuery({ sort: vals[0] })}
-            />
-            <FilterGroup
-              type="radio"
-              label="Rating"
-              options={[
-                Filters.RatingAny,
-                Filters.Rating2Plus,
-                Filters.Rating5Plus,
-                Filters.Rating8Plus,
-              ]}
-              tooltip="BoardGameGeek user rating of game enjoyability and replayability."
-              selected={[query.rating]}
-              onChange={(vals) => setQuery({ rating: vals[0] })}
-            />
-            <FilterGroup
-              type="checkbox"
-              label="Age"
-              options={[
-                Filters.Age0To4,
-                Filters.Age5To10,
-                Filters.Age11To17,
-                Filters.Age18To20,
-                Filters.Age21Plus,
-              ]}
-              selected={query.age}
-              onChange={(vals) => setQuery({ age: vals })}
-            />
-            <FilterGroup
-              type="checkbox"
-              label="Weight"
-              options={[
-                Filters.Weight1to2,
-                Filters.Weight2to3,
-                Filters.Weight3to4,
-                Filters.Weight4to5,
-              ]}
-              tooltip='BoardGameGeek user rating of how difficult the game is to learn and play. Lower rating ("lighter") means easier.'
-              selected={query.weight}
-              onChange={(vals) => setQuery({ weight: vals })}
-            />
-            <FilterGroup
-              type="checkbox"
-              label="Playtime"
-              options={["0–30 mins", "30–60 mins", "60–120 mins", "120+ mins"]}
-              values={[
-                Filters.Playtime0to30,
-                Filters.Playtime30to60,
-                Filters.Playtime60to120,
-                Filters.Playtime120Plus,
-              ]}
-              selected={query.playtime}
-              onChange={(vals) => setQuery({ playtime: vals })}
-            />
-            <FilterGroup
-              type="checkbox"
-              label="Players"
-              options={[
-                "1 Player",
-                "2 Player",
-                "3 Player",
-                "4 Player",
-                "5+ Player",
-              ]}
-              values={[
-                Filters.Players1,
-                Filters.Players2,
-                Filters.Players3,
-                Filters.Players4,
-                Filters.Players5Plus,
-              ]}
-              selected={query.players}
-              onChange={(vals) => setQuery({ players: vals })}
-            />
-          </div>
+          </Sticky>
         </div>
         <div className="flex-grow">
           <InfiniteScroll

@@ -1893,7 +1893,7 @@ class-utils@^0.3.5:
     isobject "^3.0.0"
     static-extend "^0.1.1"
 
-classnames@2.2.6, classnames@^2.2.6:
+classnames@2.2.6, classnames@^2.0.0, classnames@^2.2.6:
   version "2.2.6"
   resolved "https://registry.yarnpkg.com/classnames/-/classnames-2.2.6.tgz#43935bffdd291f326dad0a205309b38d00f650ce"
   integrity sha512-JR/iSQOSt+LQIWwrwEzJ9uk0xfN3mTVYMwt1Ir5mUcSN6pU+V4zQFFaJsclJbPuAUQH+yfWef6tm7l1quW3C8Q==
@@ -2053,6 +2053,11 @@ core-js-compat@^3.6.2:
   dependencies:
     browserslist "^4.8.5"
     semver "7.0.0"
+
+core-js@^3.6.5:
+  version "3.6.5"
+  resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.6.5.tgz#7395dc273af37fb2e50e9bd3d9fe841285231d1a"
+  integrity sha512-vZVEEwZoIsI+vPEuoF9Iqf5H7/M3eeQqWlQnYa8FSKKePuYTf5MWnxb5SDAzCa60b3JBRS5g9b+Dq7b1y/RCrA==
 
 core-util-is@~1.0.0:
   version "1.0.2"
@@ -2573,6 +2578,11 @@ event-target-shim@^5.0.0:
   version "5.0.1"
   resolved "https://registry.yarnpkg.com/event-target-shim/-/event-target-shim-5.0.1.tgz#5d4d3ebdf9583d63a5333ce2deb7480ab2b05789"
   integrity sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==
+
+eventemitter3@^3.0.0:
+  version "3.1.2"
+  resolved "https://registry.yarnpkg.com/eventemitter3/-/eventemitter3-3.1.2.tgz#2d3d48f9c346698fce83a85d7d664e98535df6e7"
+  integrity sha512-tvtQIeLVHjDkJYnzf2dgVMxfuSGJeM/7UCG17TT4EumTfNtF+0nebF/4zWOIkCreAbtNqhGEboB6BWrwqNaw4Q==
 
 events@^3.0.0:
   version "3.2.0"
@@ -3960,6 +3970,11 @@ pbkdf2@^3.0.3:
     safe-buffer "^5.0.1"
     sha.js "^2.4.8"
 
+performance-now@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/performance-now/-/performance-now-2.1.0.tgz#6309f4e0e5fa913ec1c69307ae364b4b377c9e7b"
+  integrity sha1-Ywn04OX6kT7BxpMHrjZLSzd8nns=
+
 picomatch@^2.0.4, picomatch@^2.2.1:
   version "2.2.2"
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-2.2.2.tgz#21f333e9b6b8eaff02468f5146ea406d345f4dad"
@@ -4440,7 +4455,7 @@ promise-inflight@^1.0.1:
   resolved "https://registry.yarnpkg.com/promise-inflight/-/promise-inflight-1.0.1.tgz#98472870bf228132fcbdd868129bad12c3c029e3"
   integrity sha1-mEcocL8igTL8vdhoEputEsPAKeM=
 
-prop-types@15.7.2, prop-types@^15.5.8, prop-types@^15.6.2:
+prop-types@15.7.2, prop-types@^15.5.8, prop-types@^15.6.0, prop-types@^15.6.2:
   version "15.7.2"
   resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.7.2.tgz#52c41e75b8c87e72b9d9360e0206b99dcbffa6c5"
   integrity sha512-8QQikdH7//R2vurIJSutZ1smHYTcLpRWEOlHnzcWHmBYrOGUysKwSsrC89BCiFj3CbrfJ/nXFdJepOVrY1GCHQ==
@@ -4535,6 +4550,13 @@ querystring@0.2.0, querystring@^0.2.0:
   resolved "https://registry.yarnpkg.com/querystring/-/querystring-0.2.0.tgz#b209849203bb25df820da756e747005878521620"
   integrity sha1-sgmEkgO7Jd+CDadW50cAWHhSFiA=
 
+raf@^3.0.0:
+  version "3.4.1"
+  resolved "https://registry.yarnpkg.com/raf/-/raf-3.4.1.tgz#0742e99a4a6552f445d73e3ee0328af0ff1ede39"
+  integrity sha512-Sq4CW4QhwOHE8ucn6J34MqtZCeWFP2aQSmrlroYgqAV1PjStIhJXxYuTgUIfkEk7zTLjmIjLmU5q+fbD1NnOJA==
+  dependencies:
+    performance-now "^2.1.0"
+
 randombytes@^2.0.0, randombytes@^2.0.1, randombytes@^2.0.5, randombytes@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/randombytes/-/randombytes-2.1.0.tgz#df6f84372f0270dc65cdf6291349ab7a473d4f2a"
@@ -4576,6 +4598,17 @@ react-refresh@0.8.3:
   version "0.8.3"
   resolved "https://registry.yarnpkg.com/react-refresh/-/react-refresh-0.8.3.tgz#721d4657672d400c5e3c75d063c4a85fb2d5d68f"
   integrity sha512-X8jZHc7nCMjaCqoU+V2I0cOhNW+QMBwSUkeXnTi8IPe6zaRWfn60ZzvFDZqWPfmSJfjub7dDW1SP0jaHWLu/hg==
+
+react-stickynode@^3.0.3:
+  version "3.0.3"
+  resolved "https://registry.yarnpkg.com/react-stickynode/-/react-stickynode-3.0.3.tgz#c01c9c522e1206dd3832faabc79a1d6d5c47b473"
+  integrity sha512-5uZs5IdwO/KNWkAuGvyKEZbve42iYq2IBdxviMjsW0Hw88LIoFmMs2j3KtYYmDpqoC5WPP3jDVPoOdExbuKvAQ==
+  dependencies:
+    classnames "^2.0.0"
+    core-js "^3.6.5"
+    prop-types "^15.6.0"
+    shallowequal "^1.0.0"
+    subscribe-ui-event "^2.0.6"
 
 react-tippy@^1.4.0:
   version "1.4.0"
@@ -4912,6 +4945,11 @@ shallow-clone@^3.0.0:
   dependencies:
     kind-of "^6.0.2"
 
+shallowequal@^1.0.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/shallowequal/-/shallowequal-1.1.0.tgz#188d521de95b9087404fd4dcb68b13df0ae4e7f8"
+  integrity sha512-y0m1JoUZSlPAjXVtPPW70aZWfIL/dSP7AFkRnniLCrK/8MDKog3TySTBmckD+RObVxH0v4Tox67+F14PdED2oQ==
+
 shell-quote@1.7.2:
   version "1.7.2"
   resolved "https://registry.yarnpkg.com/shell-quote/-/shell-quote-1.7.2.tgz#67a7d02c76c9da24f99d20808fcaded0e0e04be2"
@@ -5165,6 +5203,15 @@ stylis@3.5.4:
   version "3.5.4"
   resolved "https://registry.yarnpkg.com/stylis/-/stylis-3.5.4.tgz#f665f25f5e299cf3d64654ab949a57c768b73fbe"
   integrity sha512-8/3pSmthWM7lsPBKv7NXkzn2Uc9W7NotcwGNpJaa3k7WMM1XDCA4MgT5k/8BIexd5ydZdboXtU90XH9Ec4Bv/Q==
+
+subscribe-ui-event@^2.0.6:
+  version "2.0.7"
+  resolved "https://registry.yarnpkg.com/subscribe-ui-event/-/subscribe-ui-event-2.0.7.tgz#8d18b6339c35b25246a5335775573f0e5dc461f8"
+  integrity sha512-Acrtf9XXl6lpyHAWYeRD1xTPUQHDERfL4GHeNuYAtZMc4Z8Us2iDBP0Fn3xiRvkQ1FO+hx+qRLmPEwiZxp7FDQ==
+  dependencies:
+    eventemitter3 "^3.0.0"
+    lodash "^4.17.15"
+    raf "^3.0.0"
 
 supports-color@^5.3.0, supports-color@^5.4.0:
   version "5.5.0"

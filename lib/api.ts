@@ -2,6 +2,7 @@ import {
   encodeQueryParams,
   StringParam,
   ArrayParam,
+  NumberParam,
 } from "serialize-query-params";
 import { stringify } from "query-string";
 
@@ -33,6 +34,7 @@ export type Game = {
 };
 
 type Hit = {
+  sort?: any[];
   _source: Game;
 };
 
@@ -85,7 +87,10 @@ export type SearchFilters = {
   players: string[];
 };
 
-export async function search(filters: SearchFilters) {
+export async function search(
+  filters: SearchFilters,
+  searchAfterKey: any[] = []
+) {
   const encodedQuery = encodeQueryParams(
     {
       keywords: StringParam,
@@ -95,8 +100,9 @@ export async function search(filters: SearchFilters) {
       weight: ArrayParam,
       playtime: ArrayParam,
       players: ArrayParam,
+      searchAfterKey: ArrayParam,
     },
-    filters
+    { ...filters, searchAfterKey }
   );
   const response = await fetch(`/api/search?${stringify(encodedQuery)}`);
   const results = (await response.json()) as Results;

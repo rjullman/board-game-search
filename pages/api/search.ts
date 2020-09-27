@@ -134,13 +134,34 @@ function createSearchKeywordsClause(params?: string | string[]) {
   });
 }
 
+function createSearchAfterClause(params?: string | string[]) {
+  if (!params) {
+    return undefined;
+  }
+  return (typeof params === "string" ? [params] : params).map(
+    (item, i, arr) => {
+      if (i !== arr.length - 1) {
+        if (item.includes(".")) {
+          return Number.parseFloat(item);
+        }
+        return Number.parseInt(item);
+      }
+      return item;
+    }
+  );
+}
+
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   const { body: results } = await db.search({
     index: "boardgames",
     body: {
+      size: 10,
+      search_after: createSearchAfterClause(req.query["searchAfterKey"]),
       sort: [
         createSortClause(req.query["sort"]),
+        "_score",
         req.query["keywords"] ? undefined : { rank: { order: "asc" } },
+        "_id",
       ].filter((clause) => clause !== undefined),
       query: {
         bool: {

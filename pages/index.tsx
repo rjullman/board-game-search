@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Tooltip } from "react-tippy";
+import InfiniteScroll from "react-infinite-scroller";
 import classnames from "classnames";
 import {
   useQueryParam,
@@ -399,22 +400,34 @@ const Combobox: React.FC<{}> = () => {
     players: withDefault(DelimitedArrayParam, []),
   });
   const [games, setGames] = useState<Game[]>([]);
+  const [searchAfterKey, setSearchAfterKey] = useState<any[] | undefined>();
+
+  const loadGames = async (
+    filters: SearchFilters,
+    loadMore: boolean = false
+  ) => {
+    if (loadMore && !searchAfterKey) {
+      return;
+    }
+
+    const results = await search(
+      { ...query },
+      loadMore ? searchAfterKey : undefined
+    );
+    if (results.hits.length !== 0) {
+      setSearchAfterKey(results.hits[results.hits.length - 1].sort);
+    } else {
+      setSearchAfterKey(undefined);
+    }
+
+    if (loadMore) {
+      return setGames([...games, ...results.hits.map((hit) => hit._source)]);
+    }
+    return setGames(results.hits.map((hit) => hit._source));
+  };
 
   useEffect(() => {
-    const load = async () => {
-      const results = await search({
-        keywords: query.keywords,
-        sort: query.sort,
-        rating: query.rating,
-        weight: query.weight,
-        age: query.age,
-        playtime: query.playtime,
-        players: query.players,
-      });
-      setGames(results.hits.map((hit) => hit._source));
-    };
-    load();
-    console.log(query);
+    loadGames(query, false);
   }, [
     query.keywords,
     query.sort,
@@ -542,9 +555,24 @@ const Combobox: React.FC<{}> = () => {
           </div>
         </div>
         <div className="flex-grow">
-          {games.map((game) => (
-            <GameDisplay key={game.id} game={game} />
-          ))}
+          <InfiniteScroll
+            pageStart={0}
+            initialLoad={false}
+            loadMore={() => loadGames(query, true)}
+            hasMore={true}
+            loader={
+              <div key="loader" className="flex items-center overflow-y-hidden">
+                <div
+                  className="h-16 w-16 mt-5 mb-2 mx-auto animate-spin ease-linear rounded-full border-4 border-t-4 border-gray-200"
+                  style={{ borderTopColor: "#000" }}
+                ></div>
+              </div>
+            }
+          >
+            {games.map((game) => (
+              <GameDisplay key={game.id} game={game} />
+            ))}
+          </InfiniteScroll>
         </div>
       </div>
     </>

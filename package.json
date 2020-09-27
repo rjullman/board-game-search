@@ -7,14 +7,17 @@
   },
   "dependencies": {
     "@elastic/elasticsearch": "^7.9.0",
+    "add": "^2.0.6",
     "classnames": "^2.2.6",
     "next": "^9.5.3",
     "query-string": "^6.13.2",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
+    "react-infinite-scroller": "^1.2.4",
     "react-tippy": "^1.4.0",
     "serialize-query-params": "^1.2.3",
-    "use-query-params": "^1.1.8"
+    "use-query-params": "^1.1.8",
+    "yarn": "^1.22.5"
   },
   "devDependencies": {
     "@tailwindcss/custom-forms": "^0.2.1",

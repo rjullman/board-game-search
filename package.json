@@ -9,9 +9,12 @@
     "@elastic/elasticsearch": "^7.9.0",
     "classnames": "^2.2.6",
     "next": "^9.5.3",
+    "query-string": "^6.13.2",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "react-tippy": "^1.4.0"
+    "react-tippy": "^1.4.0",
+    "serialize-query-params": "^1.2.3",
+    "use-query-params": "^1.1.8"
   },
   "devDependencies": {
     "@tailwindcss/custom-forms": "^0.2.1",

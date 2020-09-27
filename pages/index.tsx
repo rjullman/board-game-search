@@ -1,8 +1,15 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Tooltip } from "react-tippy";
 import classnames from "classnames";
+import {
+  useQueryParam,
+  useQueryParams,
+  withDefault,
+  StringParam,
+  DelimitedArrayParam,
+} from "use-query-params";
 
-import { search, Game } from "../lib/api";
+import { search, Game, SearchFilters, Filters } from "../lib/api";
 
 const LabeledStat: React.FC<{
   stat: string | number;
@@ -131,7 +138,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
             )}
           </div>
         </div>
-        <div className="flex-grow p-2">
+        <div className="flex-grow p-2 pb-0">
           <div className="flex px-3 py-1">
             <h2 className="flex-grow text-xl font-semibold truncate text-gray-800">
               {game.name} ({game.year_published})
@@ -260,8 +267,44 @@ const FilterGroup: React.FC<{
   type: "checkbox" | "radio" | "select";
   label: string;
   options: string[];
+  values?: string[];
+  selected?: string[];
   tooltip?: string;
-}> = ({ type, label, options, tooltip }) => {
+  onChange?: (vals: string[]) => void;
+}> = ({ type, label, options, values, selected = [], tooltip, onChange }) => {
+  // Validate inputs to provide developer feedback.
+  useEffect(() => {
+    if (values && values.length != options.length) {
+      throw new Error("There must be the same number of options and values.");
+    }
+    if (type === "radio" || type === "select") {
+      if (selected.length === 0) {
+        throw new Error(
+          `Inputs of type '${type}' must have at least one selected value.`
+        );
+      }
+    }
+  }, [values, options, selected]);
+
+  const changeOption = (value: string) => {
+    switch (type) {
+      case "checkbox":
+        const allowedSelected = selected.filter((sel) =>
+          (values ? values : options).includes(sel)
+        );
+        if (allowedSelected.includes(value)) {
+          return onChange(allowedSelected.filter((q) => q != value));
+        }
+        return onChange([...allowedSelected, value]);
+      case "radio":
+      // fallthrough
+      case "select":
+        return onChange([value]);
+      default:
+        throw new Error(`Unknown filter group type "${type}".`);
+    }
+  };
+
   const formClassname = () => {
     switch (type) {
       case "checkbox":
@@ -274,22 +317,40 @@ const FilterGroup: React.FC<{
         throw new Error(`Unknown filter group type "${type}".`);
     }
   };
+
+  const getValue = (index: number) => {
+    return values ? values[index] : options[index];
+  };
+
   const form = () => {
     switch (type) {
       case "checkbox":
       // fallthrough
       case "radio":
-        return options.map((option) => (
+        return options.map((option, i) => (
           <label key={option} className="flex items-center">
-            <input type={type} className={formClassname()} name={label} />
+            <input
+              type={type}
+              className={formClassname()}
+              name={label}
+              value={getValue(i)}
+              checked={selected.includes(getValue(i))}
+              onChange={(e) => changeOption(e.target.value)}
+            />
             <span className="ml-2">{option}</span>
           </label>
         ));
       case "select":
         return (
-          <select className="form-select block mt-1 text-sm">
-            {options.map((option) => (
-              <option>{option}</option>
+          <select
+            className="form-select block mt-1 text-sm"
+            onChange={(e) => changeOption(e.target.value)}
+            value={selected.length === 0 ? getValue(0) : selected[0]}
+          >
+            {options.map((option, i) => (
+              <option key={option} value={getValue(i)}>
+                {option}
+              </option>
             ))}
             ;
           </select>
@@ -298,6 +359,7 @@ const FilterGroup: React.FC<{
         throw new Error(`Unknown filter group type "${type}".`);
     }
   };
+
   return (
     <div className="flex flex-col mt-3">
       <div className="flex items-center text-base font-bold">
@@ -326,25 +388,56 @@ const FilterIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const Combobox: React.FC<{}> = () => {
-  const [query, setQuery] = useState<string>("");
+  const searchInput = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useQueryParams({
+    keywords: withDefault(StringParam, ""),
+    sort: withDefault(StringParam, Filters.SortByRelevance),
+    rating: withDefault(StringParam, Filters.RatingAny),
+    weight: withDefault(DelimitedArrayParam, []),
+    age: withDefault(DelimitedArrayParam, []),
+    playtime: withDefault(DelimitedArrayParam, []),
+    players: withDefault(DelimitedArrayParam, []),
+  });
   const [games, setGames] = useState<Game[]>([]);
 
   useEffect(() => {
     const load = async () => {
-      if (query) {
-        const results = await search(query);
-        setGames(results.hits.map((hit) => hit._source));
-      }
+      const results = await search({
+        keywords: query.keywords,
+        sort: query.sort,
+        rating: query.rating,
+        weight: query.weight,
+        age: query.age,
+        playtime: query.playtime,
+        players: query.players,
+      });
+      setGames(results.hits.map((hit) => hit._source));
     };
     load();
-  }, [query]);
+    console.log(query);
+  }, [
+    query.keywords,
+    query.sort,
+    query.rating,
+    JSON.stringify(query.weight),
+    JSON.stringify(query.age),
+    JSON.stringify(query.playtime),
+    JSON.stringify(query.players),
+  ]);
+
+  useEffect(() => {
+    if (searchInput.current) {
+      searchInput.current.value = query.keywords;
+    }
+  }, [searchInput, query.keywords]);
 
   return (
     <>
       <div className="pt-6 pb-3">
         <input
+          ref={searchInput}
           className="form-input mx-auto w-3/4 md:w-2/3 lg:w-1/2 min-w-full md:min-w-0 block shadow appearance-none text-gray-700"
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => setQuery({ keywords: e.target.value })}
         />
       </div>
       <div className="flex flex-row">
@@ -364,28 +457,67 @@ const Combobox: React.FC<{}> = () => {
                 "Weight (dec)",
                 "Weight (inc)",
               ]}
+              values={[
+                Filters.SortByRelevance,
+                Filters.SortByRatingDec,
+                Filters.SortByRatingInc,
+                Filters.SortByWeightDec,
+                Filters.SortByWeightInc,
+              ]}
+              selected={[query.sort]}
+              onChange={(vals) => setQuery({ sort: vals[0] })}
             />
             <FilterGroup
               type="radio"
               label="Rating"
-              options={["any", "2.0+", "5.0+", "8.0+"]}
+              options={[
+                Filters.RatingAny,
+                Filters.Rating2Plus,
+                Filters.Rating5Plus,
+                Filters.Rating8Plus,
+              ]}
               tooltip="BoardGameGeek user rating of game enjoyability and replayability."
+              selected={[query.rating]}
+              onChange={(vals) => setQuery({ rating: vals[0] })}
             />
             <FilterGroup
               type="checkbox"
               label="Age"
-              options={["0–4", "5–10", "11–17", "18–20", "21+"]}
+              options={[
+                Filters.Age0To4,
+                Filters.Age5To10,
+                Filters.Age11To17,
+                Filters.Age18To20,
+                Filters.Age21Plus,
+              ]}
+              selected={query.age}
+              onChange={(vals) => setQuery({ age: vals })}
             />
             <FilterGroup
               type="checkbox"
               label="Weight"
-              options={["1.0–2.0", "2.0–3.0", "3.0-4.0", "4.0–5.0"]}
+              options={[
+                Filters.Weight1to2,
+                Filters.Weight2to3,
+                Filters.Weight3to4,
+                Filters.Weight4to5,
+              ]}
               tooltip='BoardGameGeek user rating of how difficult the game is to learn and play. Lower rating ("lighter") means easier.'
+              selected={query.weight}
+              onChange={(vals) => setQuery({ weight: vals })}
             />
             <FilterGroup
               type="checkbox"
               label="Playtime"
               options={["0–30 mins", "30–60 mins", "60–120 mins", "120+ mins"]}
+              values={[
+                Filters.Playtime0to30,
+                Filters.Playtime30to60,
+                Filters.Playtime60to120,
+                Filters.Playtime120Plus,
+              ]}
+              selected={query.playtime}
+              onChange={(vals) => setQuery({ playtime: vals })}
             />
             <FilterGroup
               type="checkbox"
@@ -397,6 +529,15 @@ const Combobox: React.FC<{}> = () => {
                 "4 Player",
                 "5+ Player",
               ]}
+              values={[
+                Filters.Players1,
+                Filters.Players2,
+                Filters.Players3,
+                Filters.Players4,
+                Filters.Players5Plus,
+              ]}
+              selected={query.players}
+              onChange={(vals) => setQuery({ players: vals })}
             />
           </div>
         </div>

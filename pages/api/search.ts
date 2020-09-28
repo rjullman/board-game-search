@@ -123,15 +123,17 @@ function createSearchKeywordsClause(params?: string | string[]) {
   if (!params) {
     return [];
   }
-  return (typeof params === "string" ? [params] : params).map((item) => {
-    return {
+  const query = (typeof params === "string" ? params : params.join(" ")).trim();
+  return [
+    {
       multi_match: {
-        query: item,
-        fields: ["name^3", "description"],
-        fuzziness: "AUTO",
+        query,
+        type: "bool_prefix",
+        fields: ["name^10", "description"],
+        operator: "and",
       },
-    };
-  });
+    },
+  ];
 }
 
 function createSearchAfterClause(params?: string | string[]) {

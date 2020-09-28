@@ -207,6 +207,15 @@ const SearchFiltersMenu: React.FC<{
         <FilterIcon className="w-5 h-5 mr-2" />
         <div className="text-lg font-bold">Filters</div>
       </div>
+      <div className="flex flex-col mt-3">
+        <div className="flex items-center text-base font-bold">Keywords</div>
+        <input
+          ref={searchInput}
+          className="form-input mt-1 text-sm"
+          placeholder="Search..."
+          onChange={(e) => setQuery({ keywords: e.target.value })}
+        />
+      </div>
       <FilterGroup
         type="select"
         label="Sort By"

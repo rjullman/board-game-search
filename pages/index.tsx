@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import Sticky from "react-stickynode";
 
@@ -13,8 +13,6 @@ const HomePage: React.FC = () => {
   const [searchAfterKey, setSearchAfterKey] = useState<
     (string | number)[] | undefined
   >();
-  const searchInput = useRef<HTMLInputElement>(null);
-
   const loadGames = useCallback(
     async (
       filters: SearchFilters,
@@ -47,13 +45,6 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="container mx-auto mb-6 px-6">
-      <div className="pt-6 pb-3">
-        <input
-          ref={searchInput}
-          className="form-input mx-auto w-3/4 md:w-2/3 lg:w-1/2 min-w-full md:min-w-0 block shadow appearance-none text-gray-700"
-          onChange={(e) => setFilters({ ...filters, keywords: e.target.value })}
-        />
-      </div>
       <div className="flex flex-row">
         <div className="flex-grow-0 flex-shrink-0 w-48 mr-4">
           <Sticky>

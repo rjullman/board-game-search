@@ -1,12 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import {
-  useQueryParam,
   useQueryParams,
   withDefault,
   StringParam,
   DelimitedArrayParam,
 } from "use-query-params";
-import Sticky from "react-stickynode";
 
 import { Filters, SearchFilters } from "../lib/api";
 
@@ -50,13 +48,16 @@ const FilterGroup: React.FC<{
         );
       }
     }
-  }, [values, options, selected]);
+  }, [values, options, selected, type]);
 
   const changeOption = (value: string) => {
+    if (!onChange) {
+      return;
+    }
     switch (type) {
       case "checkbox":
         const allowedSelected = selected.filter((sel) =>
-          (values ? values : options).includes(sel)
+          (values || options).includes(sel)
         );
         if (allowedSelected.includes(value)) {
           return onChange(allowedSelected.filter((q) => q != value));
@@ -84,9 +85,7 @@ const FilterGroup: React.FC<{
     }
   };
 
-  const getValue = (index: number) => {
-    return values ? values[index] : options[index];
-  };
+  const getValue = (index: number) => (values ? values[index] : options[index]);
 
   const form = () => {
     switch (type) {
@@ -137,7 +136,7 @@ const FilterGroup: React.FC<{
 };
 
 const SearchFiltersMenu: React.FC<{
-  onChangeFilters?: (SearchFilters) => void;
+  onChangeFilters?: (filts: SearchFilters) => void;
 }> = ({ onChangeFilters }) => {
   const [query, setQuery] = useQueryParams({
     keywords: withDefault(StringParam, ""),
@@ -150,18 +149,50 @@ const SearchFiltersMenu: React.FC<{
   });
   const searchInput = useRef<HTMLInputElement>(null);
 
+  /* eslint-disable react-hooks/exhaustive-deps */
+  // Create memoized versions of array fields from useQueryParams
+  // to enforce reference equality. In particular, this prevents
+  // firing onChangeFilters unecessarily on every render.
+  const removeNulls = (arr: (string | null)[]): string[] => {
+    return arr
+      .filter((item) => item !== null)
+      .map((item) => (item ? item : ""));
+  };
+  const weight = useMemo(() => removeNulls(query.weight), [
+    JSON.stringify(query.weight),
+  ]);
+  const age = useMemo(() => removeNulls(query.age), [
+    JSON.stringify(query.age),
+  ]);
+  const playtime = useMemo(() => removeNulls(query.playtime), [
+    JSON.stringify(query.playtime),
+  ]);
+  const players = useMemo(() => removeNulls(query.players), [
+    JSON.stringify(query.players),
+  ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
   useEffect(() => {
     if (onChangeFilters) {
-      onChangeFilters({ ...query });
+      onChangeFilters({
+        keywords: query.keywords,
+        sort: query.sort,
+        rating: query.rating,
+        weight,
+        age,
+        playtime,
+        players,
+      });
     }
   }, [
     query.keywords,
     query.sort,
     query.rating,
-    JSON.stringify(query.weight),
-    JSON.stringify(query.age),
-    JSON.stringify(query.playtime),
-    JSON.stringify(query.players),
+    weight,
+    age,
+    playtime,
+    players,
+    onChangeFilters,
   ]);
 
   useEffect(() => {
@@ -219,7 +250,7 @@ const SearchFiltersMenu: React.FC<{
           Filters.Age18To20,
           Filters.Age21Plus,
         ]}
-        selected={query.age}
+        selected={age}
         onChange={(vals) => setQuery({ age: vals })}
       />
       <FilterGroup
@@ -232,7 +263,7 @@ const SearchFiltersMenu: React.FC<{
           Filters.Weight4to5,
         ]}
         tooltip='BoardGameGeek user rating of how difficult the game is to learn and play. Lower rating ("lighter") means easier.'
-        selected={query.weight}
+        selected={weight}
         onChange={(vals) => setQuery({ weight: vals })}
       />
       <FilterGroup
@@ -245,7 +276,7 @@ const SearchFiltersMenu: React.FC<{
           Filters.Playtime60to120,
           Filters.Playtime120Plus,
         ]}
-        selected={query.playtime}
+        selected={playtime}
         onChange={(vals) => setQuery({ playtime: vals })}
       />
       <FilterGroup
@@ -259,7 +290,7 @@ const SearchFiltersMenu: React.FC<{
           Filters.Players4,
           Filters.Players5Plus,
         ]}
-        selected={query.players}
+        selected={players}
         onChange={(vals) => setQuery({ players: vals })}
       />
     </div>

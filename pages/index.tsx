@@ -1,54 +1,49 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import Sticky from "react-stickynode";
 
 import { search, Game, SearchFilters } from "../lib/api";
 
 import GameDisplay from "../components/GameDisplay";
-import HelpTooltip from "../components/HelpTooltip";
 import SearchFiltersMenu from "../components/SearchFiltersMenu";
 
 const HomePage: React.FC = () => {
-  const [games, setGames] = useState<Game[]>([]);
   const [filters, setFilters] = useState<SearchFilters>({});
-  const [searchAfterKey, setSearchAfterKey] = useState<any[] | undefined>();
+  const [games, setGames] = useState<Game[]>([]);
+  const [searchAfterKey, setSearchAfterKey] = useState<
+    (string | number)[] | undefined
+  >();
   const searchInput = useRef<HTMLInputElement>(null);
 
-  const loadGames = async (
-    filters: SearchFilters,
-    loadMore: boolean = false
-  ) => {
-    if (loadMore && !searchAfterKey) {
-      return;
-    }
+  const loadGames = useCallback(
+    async (
+      filters: SearchFilters,
+      searchAfter?: { games: Game[]; key: (string | number)[] }
+    ) => {
+      const results = await search(
+        filters,
+        searchAfter ? searchAfter.key : undefined
+      );
+      if (results.hits.length !== 0) {
+        setSearchAfterKey(results.hits[results.hits.length - 1].sort);
+      } else {
+        setSearchAfterKey(undefined);
+      }
 
-    const results = await search(
-      filters,
-      loadMore ? searchAfterKey : undefined
-    );
-    if (results.hits.length !== 0) {
-      setSearchAfterKey(results.hits[results.hits.length - 1].sort);
-    } else {
-      setSearchAfterKey(undefined);
-    }
-
-    if (loadMore) {
-      return setGames([...games, ...results.hits.map((hit) => hit._source)]);
-    }
-    return setGames(results.hits.map((hit) => hit._source));
-  };
+      if (searchAfter) {
+        return setGames([
+          ...searchAfter.games,
+          ...results.hits.map((hit) => hit._source),
+        ]);
+      }
+      return setGames(results.hits.map((hit) => hit._source));
+    },
+    []
+  );
 
   useEffect(() => {
-    loadGames(filters, false);
-  }, [
-    filters.keywords,
-    filters.sort,
-    filters.rating,
-    JSON.stringify(filters.weight),
-    JSON.stringify(filters.age),
-    JSON.stringify(filters.playtime),
-    JSON.stringify(filters.players),
-  ]);
+    loadGames(filters);
+  }, [filters, loadGames]);
 
   return (
     <div className="container mx-auto mb-6 px-6">
@@ -62,14 +57,23 @@ const HomePage: React.FC = () => {
       <div className="flex flex-row">
         <div className="flex-grow-0 flex-shrink-0 w-48 mr-4">
           <Sticky>
-            <SearchFiltersMenu onChangeFilters={(filts) => setFilters(filts)} />
+            <SearchFiltersMenu
+              onChangeFilters={useCallback((filts) => setFilters(filts), [])}
+            />
           </Sticky>
         </div>
         <div className="flex-grow">
           <InfiniteScroll
             pageStart={0}
             initialLoad={false}
-            loadMore={() => loadGames(filters, true)}
+            loadMore={() => {
+              if (searchAfterKey) {
+                loadGames(filters, {
+                  games: games ? games : [],
+                  key: searchAfterKey,
+                });
+              }
+            }}
             hasMore={true}
             loader={
               <div key="loader" className="flex items-center overflow-y-hidden">

@@ -89,9 +89,9 @@ const PLAYERS_RANGES = {
 };
 
 function createFilterClause(
-  ranges: Record<string, any>,
+  ranges: Record<string, unknown>,
   params?: string | string[]
-): Record<string, any> | undefined {
+): Record<string, unknown> | undefined {
   if (!params) {
     return undefined;
   }
@@ -151,7 +151,10 @@ function createSearchAfterClause(params?: string | string[]) {
   );
 }
 
-export default async (req: NextApiRequest, res: NextApiResponse) => {
+export default async (
+  req: NextApiRequest,
+  res: NextApiResponse
+): Promise<void> => {
   const { body: results } = await db.search({
     index: "boardgames",
     body: {

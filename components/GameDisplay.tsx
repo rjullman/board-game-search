@@ -83,7 +83,7 @@ const AccordianSection: React.FC<{
             "transition ease-in-out",
             show ? "opacity-0" : "opacity-100"
           )}
-        ></div>
+        />
         {children}
       </div>
     </div>
@@ -211,7 +211,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
             {(game.description || "Missing game description.")
               .split("&#10;")
               .filter((elem) => elem.trim())
-              .map((text, i, arr) => (
+              .map((text, i) => (
                 <p
                   key={i}
                   className="py-1 first:pt-0 last:pb-0"

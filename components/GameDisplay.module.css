@@ -1,0 +1,32 @@
+/**
+ *  Provide media queries to give the game name a specified pixel width
+ *  to pevent it from oversizing the container (causing horizontal scrolling).
+ **/
+
+.game_name {
+  width: 230px;
+}
+
+@media (min-width: 640px) {
+  .game_name {
+    width: 230px;
+  }
+}
+
+@media (min-width: 768px) {
+  .game_name {
+    width: 320px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .game_name {
+    width: 480px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .game_name {
+    width: 740px;
+  }
+}

@@ -53,7 +53,7 @@ const HomePage: React.FC = () => {
   }, [filters, loadGames]);
 
   return (
-    <div className="container mx-auto mt-6 mb-4 px-6">
+    <div className="lg:container mx-auto mt-6 mb-4 px-6">
       <div className="flex flex-row">
         <div className="flex-grow-0 flex-shrink-0 w-48 mr-4">
           <Sticky>

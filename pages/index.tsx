@@ -1,407 +1,18 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Tooltip } from "react-tippy";
 import InfiniteScroll from "react-infinite-scroller";
-import classnames from "classnames";
-import {
-  useQueryParam,
-  useQueryParams,
-  withDefault,
-  StringParam,
-  DelimitedArrayParam,
-} from "use-query-params";
 import Sticky from "react-stickynode";
 
-import { search, Game, SearchFilters, Filters } from "../lib/api";
+import { search, Game, SearchFilters } from "../lib/api";
 
-const LabeledStat: React.FC<{
-  stat: string | number;
-  label: string;
-  sublabel?: string;
-}> = ({ stat, label, sublabel }) => (
-  <div className="flex-grow flex-shrink">
-    <div className="text-center">
-      <div className="text-sm text-gray-600">{label}</div>
-      <div className="text-lg text-indigo-900 font-semibold tracking-wider">
-        {stat}
-      </div>
-      {sublabel && <div className="text-sm text-gray-600">{sublabel}</div>}
-    </div>
-  </div>
-);
+import GameDisplay from "../components/GameDisplay";
+import HelpTooltip from "../components/HelpTooltip";
+import SearchFiltersMenu from "../components/SearchFiltersMenu";
 
-const AccordianSection: React.FC<{
-  title: string;
-  tooltip?: string;
-}> = ({ title, tooltip, children }) => {
-  const [tagContainer, setTagContainer] = useState<HTMLElement | null>(null);
-  const [scrollHeight, setScrollHeight] = useState<number>(0);
-  const [overflows, setOverflows] = useState<boolean>(true);
-  const [expanded, setExpanded] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (tagContainer) {
-      setScrollHeight(tagContainer.scrollHeight);
-      setOverflows(tagContainer.scrollHeight > tagContainer.clientHeight);
-    }
-  }, [tagContainer]);
-
-  const toggleAccordian = () => {
-    if (overflows) {
-      setExpanded(!expanded);
-    }
-  };
-
-  const show = expanded || !overflows;
-
-  return (
-    <div className="py-2" onClick={toggleAccordian}>
-      <div className="flex pb-1 items-center">
-        <h3 className="text-lg font-bold">{title}</h3>
-        {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
-      </div>
-      <div
-        ref={setTagContainer}
-        className={classnames(
-          "relative",
-          "overflow-hidden",
-          "transition-all ease-in-out duration-500"
-        )}
-        style={{ maxHeight: show ? `${scrollHeight + 25}px` : "5rem" }}
-      >
-        <div
-          className={classnames(
-            "absolute inset-0 w-100 h-100",
-            "bg-gradient-to-b from-transparent to-white",
-            "transition ease-in-out",
-            show ? "opacity-0" : "opacity-100"
-          )}
-        ></div>
-        {children}
-      </div>
-    </div>
-  );
-};
-
-const TagList: React.FC<{
-  title: string;
-  tags: { id: number; name: string }[];
-  tooltip?: string;
-}> = ({ title, tags, tooltip }) => {
-  if (tags.length === 0) {
-    return <></>;
-  }
-  return (
-    <AccordianSection title={title} tooltip={tooltip}>
-      {tags.map((tag) => (
-        <div
-          key={tag.id}
-          className={classnames(
-            "inline-block py-1 px-3 mx-1 my-1",
-            "rounded-full bg-indigo-900 text-xs text-white font-semibold"
-          )}
-        >
-          {tag.name}
-        </div>
-      ))}
-    </AccordianSection>
-  );
-};
-
-const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
-  const buyLink = `https://boardgamegeek.com/boardgame/${game.id}/${game.slug}#buyacopy`;
-  return (
-    <div
-      key={game.id}
-      className="bg-white rounded overflow-hidden shadow-lg my-3"
-    >
-      <div className="flex flex-row">
-        <div className="flex-shrink-0">
-          <div className="w-32 h-32 flex">
-            {game.thumbnail ? (
-              <img
-                src={game.thumbnail}
-                className="w-32 h-32 object-cover object-top rounded-br"
-              />
-            ) : (
-              <svg
-                className="w-24 h-24 m-auto text-indigo-800"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            )}
-          </div>
-        </div>
-        <div className="flex-grow p-2 pb-0">
-          <div className="flex px-3 py-1">
-            <h2 className="flex-grow text-xl font-semibold truncate text-gray-800">
-              {game.name} ({game.year_published})
-            </h2>
-            <div>
-              <button
-                className={classnames(
-                  "flex-grow-0 flex-shrink-0",
-                  "py-1 px-2",
-                  "bg-indigo-800 hover:bg-indigo-900 text-white",
-                  "rounded",
-                  "text-sm font-bold"
-                )}
-              >
-                <a className="inline-flex items-center" href={buyLink}>
-                  <svg
-                    className="fill-current w-3 h-3 mr-1"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span>Buy a Copy</span>
-                </a>
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-row divide-x py-1">
-            <LabeledStat
-              label="rank"
-              stat={game.rank}
-              sublabel={`rated ${game.rating.toFixed(1)}/10`}
-            />
-            <LabeledStat
-              label="players"
-              stat={
-                game.min_players != game.max_players
-                  ? `${game.min_players}–${game.max_players}`
-                  : game.min_players
-              }
-              sublabel={game.min_age != 0 ? `age ${game.min_age}+` : ""}
-            />
-            <LabeledStat
-              label="playtime"
-              stat={
-                game.min_playtime != game.max_playtime
-                  ? `${game.min_playtime}–${game.max_playtime}`
-                  : game.min_playtime
-              }
-              sublabel="mins"
-            />
-            <LabeledStat
-              label="weight"
-              stat={game.weight == 0 ? "?" : `${game.weight.toFixed(1)}/5`}
-              sublabel="complexity"
-            />
-          </div>
-        </div>
-      </div>
-      <div className="px-5 pb-2 divide-y-4 divide-dashed">
-        <AccordianSection title="Description">
-          <div>
-            {(game.description || "Missing game description.")
-              .split("&#10;")
-              .filter((elem) => elem.trim())
-              .map((text, i, arr) => (
-                <p
-                  key={i}
-                  className="py-1 first:pt-0 last:pb-0"
-                  dangerouslySetInnerHTML={{ __html: text }}
-                />
-              ))}
-          </div>
-        </AccordianSection>
-        <TagList
-          title="Mechanics"
-          tags={game.mechanics}
-          tooltip="How you interact with the game. Games with similar mechanics will have similar rules, objectives, and challenges."
-        />
-        <TagList
-          title="Themes"
-          tags={game.categories}
-          tooltip="How the game looks and feels. Games with similar themes may have a similar graphical style, form factor, or plot."
-        />
-        <TagList
-          title="Expansions"
-          tags={game.expansions}
-          tooltip="Extensions to the game. This includes developer, fan, and promotional expansions some of which are no longer available for purchase."
-        />
-      </div>
-    </div>
-  );
-};
-
-const HelpTooltip: React.FC = ({ children }) => {
-  return (
-    <Tooltip
-      html={<div className="w-32 text-xs">{children}</div>}
-      position="right-start"
-      arrow={true}
-    >
-      <div className="pl-1">
-        <svg
-          className="w-4 h-4 text-gray-800 hover:text-black"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </div>
-    </Tooltip>
-  );
-};
-
-const FilterGroup: React.FC<{
-  type: "checkbox" | "radio" | "select";
-  label: string;
-  options: string[];
-  values?: string[];
-  selected?: string[];
-  tooltip?: string;
-  onChange?: (vals: string[]) => void;
-}> = ({ type, label, options, values, selected = [], tooltip, onChange }) => {
-  // Validate inputs to provide developer feedback.
-  useEffect(() => {
-    if (values && values.length != options.length) {
-      throw new Error("There must be the same number of options and values.");
-    }
-    if (type === "radio" || type === "select") {
-      if (selected.length === 0) {
-        throw new Error(
-          `Inputs of type '${type}' must have at least one selected value.`
-        );
-      }
-    }
-  }, [values, options, selected]);
-
-  const changeOption = (value: string) => {
-    switch (type) {
-      case "checkbox":
-        const allowedSelected = selected.filter((sel) =>
-          (values ? values : options).includes(sel)
-        );
-        if (allowedSelected.includes(value)) {
-          return onChange(allowedSelected.filter((q) => q != value));
-        }
-        return onChange([...allowedSelected, value]);
-      case "radio":
-      // fallthrough
-      case "select":
-        return onChange([value]);
-      default:
-        throw new Error(`Unknown filter group type "${type}".`);
-    }
-  };
-
-  const formClassname = () => {
-    switch (type) {
-      case "checkbox":
-        return "form-checkbox";
-      case "radio":
-        return "form-radio";
-      case "select":
-        return "form-select";
-      default:
-        throw new Error(`Unknown filter group type "${type}".`);
-    }
-  };
-
-  const getValue = (index: number) => {
-    return values ? values[index] : options[index];
-  };
-
-  const form = () => {
-    switch (type) {
-      case "checkbox":
-      // fallthrough
-      case "radio":
-        return options.map((option, i) => (
-          <label key={option} className="flex items-center">
-            <input
-              type={type}
-              className={formClassname()}
-              name={label}
-              value={getValue(i)}
-              checked={selected.includes(getValue(i))}
-              onChange={(e) => changeOption(e.target.value)}
-            />
-            <span className="ml-2">{option}</span>
-          </label>
-        ));
-      case "select":
-        return (
-          <select
-            className="form-select block mt-1 text-sm"
-            onChange={(e) => changeOption(e.target.value)}
-            value={selected.length === 0 ? getValue(0) : selected[0]}
-          >
-            {options.map((option, i) => (
-              <option key={option} value={getValue(i)}>
-                {option}
-              </option>
-            ))}
-            ;
-          </select>
-        );
-      default:
-        throw new Error(`Unknown filter group type "${type}".`);
-    }
-  };
-
-  return (
-    <div className="flex flex-col mt-3">
-      <div className="flex items-center text-base font-bold">
-        {label} {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
-      </div>
-      {form()}
-    </div>
-  );
-};
-
-const FilterIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-    />
-  </svg>
-);
-
-const Combobox: React.FC<{}> = () => {
-  const searchInput = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useQueryParams({
-    keywords: withDefault(StringParam, ""),
-    sort: withDefault(StringParam, Filters.SortByRelevance),
-    rating: withDefault(StringParam, Filters.RatingAny),
-    weight: withDefault(DelimitedArrayParam, []),
-    age: withDefault(DelimitedArrayParam, []),
-    playtime: withDefault(DelimitedArrayParam, []),
-    players: withDefault(DelimitedArrayParam, []),
-  });
+const HomePage: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
+  const [filters, setFilters] = useState<SearchFilters>({});
   const [searchAfterKey, setSearchAfterKey] = useState<any[] | undefined>();
+  const searchInput = useRef<HTMLInputElement>(null);
 
   const loadGames = async (
     filters: SearchFilters,
@@ -412,7 +23,7 @@ const Combobox: React.FC<{}> = () => {
     }
 
     const results = await search(
-      { ...query },
+      filters,
       loadMore ? searchAfterKey : undefined
     );
     if (results.hits.length !== 0) {
@@ -428,145 +39,37 @@ const Combobox: React.FC<{}> = () => {
   };
 
   useEffect(() => {
-    loadGames(query, false);
+    loadGames(filters, false);
   }, [
-    query.keywords,
-    query.sort,
-    query.rating,
-    JSON.stringify(query.weight),
-    JSON.stringify(query.age),
-    JSON.stringify(query.playtime),
-    JSON.stringify(query.players),
+    filters.keywords,
+    filters.sort,
+    filters.rating,
+    JSON.stringify(filters.weight),
+    JSON.stringify(filters.age),
+    JSON.stringify(filters.playtime),
+    JSON.stringify(filters.players),
   ]);
 
-  useEffect(() => {
-    if (searchInput.current) {
-      searchInput.current.value = query.keywords;
-    }
-  }, [searchInput, query.keywords]);
-
   return (
-    <>
+    <div className="container mx-auto mb-6 px-6">
       <div className="pt-6 pb-3">
         <input
           ref={searchInput}
           className="form-input mx-auto w-3/4 md:w-2/3 lg:w-1/2 min-w-full md:min-w-0 block shadow appearance-none text-gray-700"
-          onChange={(e) => setQuery({ keywords: e.target.value })}
+          onChange={(e) => setFilters({ ...filters, keywords: e.target.value })}
         />
       </div>
       <div className="flex flex-row">
         <div className="flex-grow-0 flex-shrink-0 w-48 mr-4">
           <Sticky>
-            <div className="sidebar py-4 w-100">
-              <div className="flex flex-row items-center">
-                <FilterIcon className="w-5 h-5 mr-2" />
-                <div className="text-lg font-bold">Filters</div>
-              </div>
-              <FilterGroup
-                type="select"
-                label="Sort By"
-                options={[
-                  "Relevance",
-                  "Rating (dec)",
-                  "Rating (inc)",
-                  "Weight (dec)",
-                  "Weight (inc)",
-                ]}
-                values={[
-                  Filters.SortByRelevance,
-                  Filters.SortByRatingDec,
-                  Filters.SortByRatingInc,
-                  Filters.SortByWeightDec,
-                  Filters.SortByWeightInc,
-                ]}
-                selected={[query.sort]}
-                onChange={(vals) => setQuery({ sort: vals[0] })}
-              />
-              <FilterGroup
-                type="radio"
-                label="Rating"
-                options={[
-                  Filters.RatingAny,
-                  Filters.Rating2Plus,
-                  Filters.Rating5Plus,
-                  Filters.Rating8Plus,
-                ]}
-                tooltip="BoardGameGeek user rating of game enjoyability and replayability."
-                selected={[query.rating]}
-                onChange={(vals) => setQuery({ rating: vals[0] })}
-              />
-              <FilterGroup
-                type="checkbox"
-                label="Age"
-                options={[
-                  Filters.Age0To4,
-                  Filters.Age5To10,
-                  Filters.Age11To17,
-                  Filters.Age18To20,
-                  Filters.Age21Plus,
-                ]}
-                selected={query.age}
-                onChange={(vals) => setQuery({ age: vals })}
-              />
-              <FilterGroup
-                type="checkbox"
-                label="Weight"
-                options={[
-                  Filters.Weight1to2,
-                  Filters.Weight2to3,
-                  Filters.Weight3to4,
-                  Filters.Weight4to5,
-                ]}
-                tooltip='BoardGameGeek user rating of how difficult the game is to learn and play. Lower rating ("lighter") means easier.'
-                selected={query.weight}
-                onChange={(vals) => setQuery({ weight: vals })}
-              />
-              <FilterGroup
-                type="checkbox"
-                label="Playtime"
-                options={[
-                  "0–30 mins",
-                  "30–60 mins",
-                  "60–120 mins",
-                  "120+ mins",
-                ]}
-                values={[
-                  Filters.Playtime0to30,
-                  Filters.Playtime30to60,
-                  Filters.Playtime60to120,
-                  Filters.Playtime120Plus,
-                ]}
-                selected={query.playtime}
-                onChange={(vals) => setQuery({ playtime: vals })}
-              />
-              <FilterGroup
-                type="checkbox"
-                label="Players"
-                options={[
-                  "1 Player",
-                  "2 Player",
-                  "3 Player",
-                  "4 Player",
-                  "5+ Player",
-                ]}
-                values={[
-                  Filters.Players1,
-                  Filters.Players2,
-                  Filters.Players3,
-                  Filters.Players4,
-                  Filters.Players5Plus,
-                ]}
-                selected={query.players}
-                onChange={(vals) => setQuery({ players: vals })}
-              />
-            </div>
+            <SearchFiltersMenu onChangeFilters={(filts) => setFilters(filts)} />
           </Sticky>
         </div>
         <div className="flex-grow">
           <InfiniteScroll
             pageStart={0}
             initialLoad={false}
-            loadMore={() => loadGames(query, true)}
+            loadMore={() => loadGames(filters, true)}
             hasMore={true}
             loader={
               <div key="loader" className="flex items-center overflow-y-hidden">
@@ -583,14 +86,8 @@ const Combobox: React.FC<{}> = () => {
           </InfiniteScroll>
         </div>
       </div>
-    </>
+    </div>
   );
 };
-
-const HomePage: React.FC<{}> = () => (
-  <div className="container mx-auto mb-6 px-6">
-    <Combobox />
-  </div>
-);
 
 export default HomePage;

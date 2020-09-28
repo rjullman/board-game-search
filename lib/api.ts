@@ -78,13 +78,13 @@ export enum Filters {
 }
 
 export type SearchFilters = {
-  keywords: string;
-  sort: string;
-  rating: string;
-  weight: string[];
-  age: string[];
-  playtime: string[];
-  players: string[];
+  keywords?: string;
+  sort?: string;
+  rating?: string;
+  weight?: string[];
+  age?: string[];
+  playtime?: string[];
+  players?: string[];
 };
 
 export async function search(

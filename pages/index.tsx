@@ -8,11 +8,13 @@ import GameDisplay from "../components/GameDisplay";
 import SearchFiltersMenu from "../components/SearchFiltersMenu";
 
 const HomePage: React.FC = () => {
-  const [filters, setFilters] = useState<SearchFilters>({});
+  const [filters, setFilters] = useState<SearchFilters | undefined>();
   const [games, setGames] = useState<Game[]>([]);
   const [searchAfterKey, setSearchAfterKey] = useState<
     (string | number)[] | undefined
   >();
+  const [moreResults, setMoreResults] = useState<boolean>(true);
+
   const loadGames = useCallback(
     async (
       filters: SearchFilters,
@@ -29,22 +31,29 @@ const HomePage: React.FC = () => {
       }
 
       if (searchAfter) {
-        return setGames([
+        setGames([
           ...searchAfter.games,
           ...results.hits.map((hit) => hit._source),
         ]);
+      } else {
+        setGames(results.hits.map((hit) => hit._source));
       }
-      return setGames(results.hits.map((hit) => hit._source));
+      setMoreResults(
+        results.total.value !==
+          results.hits.length + (searchAfter ? searchAfter.games.length : 0)
+      );
     },
     []
   );
 
   useEffect(() => {
-    loadGames(filters);
+    if (filters) {
+      loadGames(filters);
+    }
   }, [filters, loadGames]);
 
   return (
-    <div className="container mx-auto mb-6 px-6">
+    <div className="container mx-auto mt-6 mb-4 px-6">
       <div className="flex flex-row">
         <div className="flex-grow-0 flex-shrink-0 w-48 mr-4">
           <Sticky>
@@ -58,14 +67,14 @@ const HomePage: React.FC = () => {
             pageStart={0}
             initialLoad={false}
             loadMore={() => {
-              if (searchAfterKey) {
+              if (searchAfterKey && filters) {
                 loadGames(filters, {
                   games: games ? games : [],
                   key: searchAfterKey,
                 });
               }
             }}
-            hasMore={true}
+            hasMore={moreResults}
             loader={
               <div key="loader" className="flex items-center overflow-y-hidden">
                 <div

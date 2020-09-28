@@ -39,6 +39,7 @@ type Hit = {
 
 type Results = {
   hits: Hit[];
+  total: { relation: "eq"; value: number };
 };
 
 export enum Filters {

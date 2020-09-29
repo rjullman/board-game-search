@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import Sticky from "react-stickynode";
+import classnames from "classnames";
 
 import { search, Game, SearchFilters } from "../lib/api";
 
@@ -21,10 +22,19 @@ const HomePage: React.FC = () => {
       filters: SearchFilters,
       searchAfter?: { games: Game[]; key: (string | number)[] }
     ) => {
+      const showLoaderTimer = setTimeout(() => {
+        if (!searchAfter) {
+          setGames([]);
+        }
+      }, 1000);
+
       const results = await search(
         filters,
         searchAfter ? searchAfter.key : undefined
       );
+
+      clearTimeout(showLoaderTimer);
+
       if (results.hits.length !== 0) {
         setSearchAfterKey(results.hits[results.hits.length - 1].sort);
       } else {
@@ -37,8 +47,10 @@ const HomePage: React.FC = () => {
           ...results.hits.map((hit) => hit._source),
         ]);
       } else {
+        window.scrollTo(0, 0);
         setGames(results.hits.map((hit) => hit._source));
       }
+
       setMoreResults(
         results.total.value !==
           results.hits.length + (searchAfter ? searchAfter.games.length : 0)
@@ -77,7 +89,12 @@ const HomePage: React.FC = () => {
             }}
             hasMore={moreResults}
             loader={
-              <div key="loader" className="flex items-center overflow-y-hidden">
+              <div
+                key="loader"
+                className={classnames("flex items-center overflow-y-hidden", {
+                  "mt-6": games.length === 0,
+                })}
+              >
                 <div
                   className="h-16 w-16 mt-5 mb-2 mx-auto animate-spin ease-linear rounded-full border-4 border-t-4 border-gray-200"
                   style={{ borderTopColor: "#000" }}

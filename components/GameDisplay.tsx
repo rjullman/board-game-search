@@ -62,7 +62,7 @@ const AccordianSection: React.FC<{
   const show = expanded || !overflows;
 
   return (
-    <div className="py-2" onClick={toggleAccordian}>
+    <div className="py-2 first:pt-0" onClick={toggleAccordian}>
       <div className="flex pb-1 items-center">
         <h3 className="text-lg font-bold">{title}</h3>
         {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
@@ -95,7 +95,7 @@ const LabeledStat: React.FC<{
   label: string;
   sublabel?: string;
 }> = ({ stat, label, sublabel }) => (
-  <div className="flex-grow flex-shrink">
+  <div className="flex-grow flex-shrink w-1/2 py-2 md:w-auto md:py-0">
     <div className="text-center">
       <div className="text-sm text-gray-600">{label}</div>
       <div className="text-lg text-indigo-900 font-semibold tracking-wider">
@@ -138,13 +138,13 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
       key={game.id}
       className="bg-white rounded overflow-hidden shadow-lg my-3"
     >
-      <div className="flex flex-row">
+      <div className="flex flex-col md:flex-row">
         <div className="flex-shrink-0">
-          <div className="w-32 h-32 flex">
+          <div className="flex w-full h-24 md:w-32 md:h-32">
             {game.thumbnail ? (
               <img
                 src={game.thumbnail}
-                className="w-32 h-32 object-cover object-top rounded-br"
+                className="w-full object-cover object-center md:rounded-br"
               />
             ) : (
               <PhotographIcon className="w-24 h-24 m-auto text-indigo-800" />
@@ -152,7 +152,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
           </div>
         </div>
         <div className="flex-grow p-2 pb-0 min-w-0">
-          <div className="flex px-3 py-1 justify-between">
+          <div className="flex py-1 px-1 sm:px-3 justify-between">
             <div className="flow-grow flex-shrink pr-2 text-xl font-semibold truncate text-gray-800">
               {game.name} ({game.year_published})
             </div>
@@ -165,14 +165,16 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
                   "text-sm font-bold"
                 )}
               >
-                <a className="inline-flex items-center" href={buyLink}>
+                <a className="inline-flex items-center min-w-0" href={buyLink}>
                   <ShoppingBagIcon className="fill-current w-3 h-3 mr-1" />
-                  <span>Buy a Copy</span>
+                  <div>
+                    Buy <span className="hidden sm:inline">a Copy</span>
+                  </div>
                 </a>
               </button>
             </div>
           </div>
-          <div className="flex flex-row divide-x py-1">
+          <div className="flex flex-row flex-wrap md:flex-no-wrap md:divide-x-1 md:py-2">
             <LabeledStat
               label="rank"
               stat={game.rank}
@@ -204,7 +206,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
           </div>
         </div>
       </div>
-      <div className="px-5 pb-2 divide-y-4 divide-dashed">
+      <div className="px-3 sm:px-5 pb-2 pt-1 md:pt-2 divide-y-4 divide-dashed">
         <AccordianSection title="Description">
           <div>
             {(game.description || "Missing game description.")

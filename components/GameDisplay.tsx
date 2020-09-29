@@ -3,7 +3,6 @@ import classnames from "classnames";
 
 import { Game } from "../lib/api";
 
-import styles from "./GameDisplay.module.css";
 import HelpTooltip from "./HelpTooltip";
 
 const PhotographIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -133,7 +132,6 @@ const TagList: React.FC<{
 };
 
 const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
-  console.log(styles);
   const buyLink = `https://boardgamegeek.com/boardgame/${game.id}/${game.slug}#buyacopy`;
   return (
     <div
@@ -153,11 +151,9 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
             )}
           </div>
         </div>
-        <div className="flex-grow p-2 pb-0">
+        <div className="flex-grow p-2 pb-0 min-w-0">
           <div className="flex px-3 py-1 justify-between">
-            <div
-              className={`${styles.game_name} flow-grow flex-shrink pr-3 text-xl font-semibold truncate text-gray-800`}
-            >
+            <div className="flow-grow flex-shrink pr-2 text-xl font-semibold truncate text-gray-800">
               {game.name} ({game.year_published})
             </div>
             <div className="flex-grow-0 flex-shrink-0">

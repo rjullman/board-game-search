@@ -75,7 +75,7 @@ const HomePage: React.FC = () => {
             />
           </Sticky>
         </div>
-        <div className="flex-grow">
+        <div className="flex-grow min-w-0">
           <InfiniteScroll
             pageStart={0}
             initialLoad={false}

@@ -3,7 +3,7 @@ module.exports = {
     removeDeprecatedGapUtilities: true,
     purgeLayersByDefault: true,
   },
-  purge: ["./pages/**/*.{ts,tsx}"],
+  purge: ["./pages/**/*.tsx", "./components/**/*.tsx"],
   theme: {
     extend: {
       transitionProperty: {

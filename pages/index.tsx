@@ -5,6 +5,7 @@ import Sticky from "react-stickynode";
 import { search, Game, SearchFilters } from "../lib/api";
 
 import GameDisplay from "../components/GameDisplay";
+import NoSearchResults from "../components/NoSearchResults";
 import SearchFiltersMenu from "../components/SearchFiltersMenu";
 
 const HomePage: React.FC = () => {
@@ -84,9 +85,11 @@ const HomePage: React.FC = () => {
               </div>
             }
           >
-            {games.map((game) => (
-              <GameDisplay key={game.id} game={game} />
-            ))}
+            {games.length === 0 && !moreResults ? (
+              <NoSearchResults />
+            ) : (
+              games.map((game) => <GameDisplay key={game.id} game={game} />)
+            )}
           </InfiniteScroll>
         </div>
       </div>

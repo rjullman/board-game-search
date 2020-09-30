@@ -21,6 +21,13 @@ const HelpTooltip: React.FC = ({ children }) => {
     <Tooltip
       html={<div className="w-32 text-xs">{children}</div>}
       position="right-start"
+      popperOptions={{
+        modifiers: {
+          preventOverflow: {
+            boundariesElement: "window",
+          },
+        },
+      }}
       arrow={true}
     >
       <div className="pl-1">

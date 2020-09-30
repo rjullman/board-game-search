@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   useQueryParams,
   withDefault,
@@ -8,24 +8,8 @@ import {
 
 import { Filters, SearchFilters } from "../lib/api";
 
+import FilterIcon from "./FilterIcon";
 import HelpTooltip from "./HelpTooltip";
-
-const FilterIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-    />
-  </svg>
-);
 
 const FilterGroup: React.FC<{
   type: "checkbox" | "radio" | "select";
@@ -36,6 +20,14 @@ const FilterGroup: React.FC<{
   tooltip?: string;
   onChange?: (vals: string[]) => void;
 }> = ({ type, label, options, values, selected = [], tooltip, onChange }) => {
+  // Prefix forms groups with a UUID to allow multiple groups with the same
+  // "label" on a page. This can be useful if you need to render multiple copies
+  // of the same filter group depending on screen size.
+  const [uid, setUid] = useState<string>("");
+  useEffect(() => {
+    setUid(Math.random().toString(36).substring(2, 15));
+  }, []);
+
   // Validate inputs to provide developer feedback.
   useEffect(() => {
     if (values && values.length != options.length) {
@@ -97,7 +89,7 @@ const FilterGroup: React.FC<{
             <input
               type={type}
               className={formClassname()}
-              name={label}
+              name={`${uid}-${label}`}
               value={getValue(i)}
               checked={selected.includes(getValue(i))}
               onChange={(e) => changeOption(e.target.value)}
@@ -202,7 +194,7 @@ const SearchFiltersMenu: React.FC<{
   }, [searchInput, query.keywords]);
 
   return (
-    <div className="sidebar py-4 w-100">
+    <div className="py-4 w-100">
       <div className="flex flex-row items-center">
         <FilterIcon className="w-5 h-5 mr-2" />
         <div className="text-lg font-bold">Filters</div>

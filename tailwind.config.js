@@ -11,6 +11,9 @@ module.exports = {
       },
     },
   },
-  variants: { padding: ["responsive", "first", "last"] },
+  variants: {
+    padding: ["responsive", "first", "last"],
+    margin: ["responsive", "first", "last"],
+  },
   plugins: [require("@tailwindcss/custom-forms")],
 };

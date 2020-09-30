@@ -136,7 +136,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
   return (
     <div
       key={game.id}
-      className="bg-white rounded overflow-hidden shadow-lg my-3"
+      className="bg-white rounded overflow-hidden shadow-lg my-3 first:mt-0"
     >
       <div className="flex flex-col md:flex-row">
         <div className="flex-shrink-0">

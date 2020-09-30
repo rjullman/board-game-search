@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroller";
-import Sticky from "react-stickynode";
 import classnames from "classnames";
 
 import { search, Game, SearchFilters } from "../lib/api";
@@ -66,14 +65,12 @@ const HomePage: React.FC = () => {
   }, [filters, loadGames]);
 
   return (
-    <div className="lg:container mx-auto my-4 px-6">
+    <div className="lg:container mx-auto my-4 px-4">
       <div className="flex flex-row">
-        <div className="flex-grow-0 flex-shrink-0 w-48 mr-4 hidden sm:block">
-          <Sticky>
-            <SearchFiltersMenu
-              onChangeFilters={useCallback((filts) => setFilters(filts), [])}
-            />
-          </Sticky>
+        <div className="sticky inset-0 self-start overflow-y-scroll flex-grow-0 flex-shrink-0 w-48 md:w-56 pl-2 pr-4 mr-1 hidden sm:block h-screen">
+          <SearchFiltersMenu
+            onChangeFilters={useCallback((filts) => setFilters(filts), [])}
+          />
         </div>
         <div className="flex-grow min-w-0">
           <InfiniteScroll

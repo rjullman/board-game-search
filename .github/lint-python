@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+cd $(dirname $(dirname $0))
+
+PYTHON_FILES=$(git ls-tree -r --name-only HEAD | grep "\.py$")
+
+echo -e "\nRunning black..."
+black --check ${PYTHON_FILES}
+
+echo -e "\nRunning flake8..."
+flake8 ${PYTHON_FILES}
+
+echo -e "\nRunning pylint..."
+pylint ${PYTHON_FILES}
+
+echo -e "\nRunning mypy..."
+mypy ${PYTHON_FILES}

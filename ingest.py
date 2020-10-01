@@ -38,6 +38,7 @@ class GameBasicMetadata(NamedTuple):
 
     id: int  # BGG board game id.
     slug: str  # BGG board game slug.
+    brief_description: Optional[str]
 
 
 class EntityLink(NamedTuple):
@@ -59,6 +60,7 @@ class Game(NamedTuple):
     name: str
     thumbnail: Optional[str]
     description: Optional[str]
+    brief_description: Optional[str]
     expected_playtime: int
     min_players: int
     max_players: int
@@ -67,6 +69,7 @@ class Game(NamedTuple):
     min_age: int
     rank: int
     rating: float
+    num_ratings: int
     weight: float
     year_published: int
     categories: List[EntityLink]
@@ -103,14 +106,28 @@ def chunked(iterable: Iterable[T], n: int) -> Iterable[List[T]]:
 
 
 def xml_get_opt(
-    item: XMLElement, path: Optional[str] = None, attr: Optional[str] = None
+    item: XMLElement,
+    path: Optional[str] = None,
+    attr: Optional[str] = None,
+    *,
+    xpath: bool = False,
 ) -> Optional[str]:
     """
     Helper for LXML to get an attribute at a path from an XML element.
 
     Returns None if the path or attribute do not exist.
     """
-    elem = item.find(path) if path else item
+    if path:
+        if xpath:
+            elems = item.xpath(path)
+            assert isinstance(elems, list)
+            elem = elems[0] if elems else None
+            assert elem is None or isinstance(elem, XMLElement)
+        else:
+            elem = item.find(path)
+    else:
+        elem = item
+
     if elem is None:
         return None
     ret = elem.get(attr) if attr else elem.text
@@ -122,14 +139,18 @@ def xml_get_opt(
 
 
 def xml_get(
-    item: XMLElement, path: Optional[str] = None, attr: Optional[str] = None
+    item: XMLElement,
+    path: Optional[str] = None,
+    attr: Optional[str] = None,
+    *,
+    xpath: bool = False,
 ) -> str:
     """
     Helper for LXML to get an attribute at a path from an XML element.
 
     Raises a ValueError if the path or attribute do not exist.
     """
-    ret = xml_get_opt(item, path, attr)
+    ret = xml_get_opt(item, path, attr, xpath=xpath)
     if ret is None:
         if path and item.find(path) is None:
             raise ValueError(f"Could not find XML path '{path}'.")
@@ -225,12 +246,24 @@ def get_game_basic_metadata(
                 row, "td[@class='collection_thumbnail']/a[@href]", "href"
             )
             id_str, slug = bgg_page_link.split("/")[2:4]
+            description = xml_get_opt(
+                row,
+                "td[@class='collection_thumbnail']/"
+                "td[contains(@class,'collection_objectname')]/p",
+                xpath=True,
+            )
             rank = xml_get_opt(row, "td[@class='collection_rank']/a[@name]", "name")
 
             if rank is None:
                 return metas, False
 
-            metas.append(GameBasicMetadata(id=int(id_str), slug=slug))
+            metas.append(
+                GameBasicMetadata(
+                    id=int(id_str),
+                    slug=slug,
+                    brief_description=description.strip() if description else None,
+                )
+            )
 
         return metas, True
 
@@ -304,6 +337,7 @@ def get_game_full_metadata(
                     name=xml_get(item, "name[@type='primary']", "value"),
                     thumbnail=xml_get_opt(item, "thumbnail"),
                     description=xml_get_opt(item, "description"),
+                    brief_description=id_to_meta[item_id].brief_description,
                     min_players=int(xml_get(item, "minplayers", "value")),
                     max_players=int(xml_get(item, "maxplayers", "value")),
                     expected_playtime=int(xml_get(item, "playingtime", "value")),
@@ -312,6 +346,9 @@ def get_game_full_metadata(
                     min_age=int(xml_get(item, "minage", "value")),
                     rank=int(rank_str),
                     rating=float(xml_get(item, "statistics/ratings/average", "value")),
+                    num_ratings=int(
+                        xml_get(item, "statistics/ratings/usersrated", "value")
+                    ),
                     weight=float(
                         xml_get(item, "statistics/ratings/averageweight", "value")
                     ),

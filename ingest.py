@@ -5,11 +5,15 @@ Download and process board game data from BoardGameGeek (BGG).
 import itertools
 import json
 import sys
+import threading
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from io import BytesIO
-from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, TypeVar
+from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, TypeVar
 
 import click
+import elasticsearch.helpers
 import requests
 from elasticsearch import Elasticsearch
 from lxml import etree
@@ -143,22 +147,25 @@ class PageCache:
     filename: str
     cache: Optional[Dict[str, str]]
     changes: int
+    lock: threading.Lock
 
     def __init__(self, filename: str):
         self.filename = filename
         self.cache = None
         self.changes = 0
+        self.lock = threading.Lock()
 
     def load_cache(self) -> None:
         """Load the cache."""
-        if self.cache is not None:
-            return
+        with self.lock:
+            if self.cache is not None:
+                return
 
-        try:
-            with open(self.filename, "r") as handle:
-                self.cache = json.load(handle)
-        except IOError:
-            self.cache = {}
+            try:
+                with open(self.filename, "r") as handle:
+                    self.cache = json.load(handle)
+            except IOError:
+                self.cache = {}
 
     def save(self) -> None:
         """Save the page cache to disk."""
@@ -196,15 +203,16 @@ def open_cache(filename: str) -> Iterator[PageCache]:
     cache.save()
 
 
-def get_game_basic_metadata(cache: PageCache) -> List[GameBasicMetadata]:
+def get_game_basic_metadata(
+    cache: PageCache, executor: ThreadPoolExecutor, request_batch_size: int = 50
+) -> List[GameBasicMetadata]:
     """
     Gets the BGG basic metadata for all ranked games on BGG.
     """
-    metas: List[GameBasicMetadata] = []
-    page_num = 0
-    while True:
-        page_num += 1
-        page_str = cache.fetch(BGG_TOP_RANKED_GAMES_URL.format(page=page_num))
+
+    def scrape_page(page: int) -> Tuple[List[GameBasicMetadata], bool]:
+        metas: List[GameBasicMetadata] = []
+        page_str = cache.fetch(BGG_TOP_RANKED_GAMES_URL.format(page=page))
         parsed = etree.parse(
             BytesIO(page_str.encode()), etree.XMLParser(encoding="utf-8", recover=True)
         )
@@ -220,15 +228,35 @@ def get_game_basic_metadata(cache: PageCache) -> List[GameBasicMetadata]:
             rank = xml_get_opt(row, "td[@class='collection_rank']/a[@name]", "name")
 
             if rank is None:
-                return metas
+                return metas, False
 
             metas.append(GameBasicMetadata(id=int(id_str), slug=slug))
+
+        return metas, True
+
+    metas: List[GameBasicMetadata] = []
+    page_num = 0
+    while True:
+        results = executor.map(
+            scrape_page, range(page_num, page_num + request_batch_size)
+        )
+        done = False
+        for result, more in results:
+            metas.extend(result)
+            done |= not more
+
+        if done:
+            return metas
+
+        page_num += request_batch_size
 
     raise ValueError("Unreachable")
 
 
 def get_game_full_metadata(
-    cache: PageCache, metas: List[GameBasicMetadata]
+    cache: PageCache,
+    executor: ThreadPoolExecutor,
+    metas: List[GameBasicMetadata],
 ) -> List[Game]:
     """
     Gets the BGG game metadata the given BGG game ids.
@@ -247,8 +275,8 @@ def get_game_full_metadata(
             )
         return ret
 
-    games = []
-    for chunk in chunked(metas, API_BATCH_SIZE):
+    def request_for_chunk(chunk: List[GameBasicMetadata]) -> List[Game]:
+        games = []
         id_to_meta = {meta.id: meta for meta in chunk}
         page_str = cache.fetch(
             BGG_THING_API_URL.format(ids=",".join(str(id) for id in id_to_meta.keys()))
@@ -259,6 +287,15 @@ def get_game_full_metadata(
 
         for item in items:
             assert isinstance(item, XMLElement)
+
+            rank_str = xml_get(
+                item,
+                "statistics/ratings/ranks/rank[@name='boardgame']",
+                "value",
+            )
+            if rank_str == "Not Ranked":
+                continue
+
             item_id = int(xml_get(item, None, "id"))
             games.append(
                 Game(
@@ -273,13 +310,7 @@ def get_game_full_metadata(
                     min_playtime=int(xml_get(item, "minplaytime", "value")),
                     max_playtime=int(xml_get(item, "maxplaytime", "value")),
                     min_age=int(xml_get(item, "minage", "value")),
-                    rank=int(
-                        xml_get(
-                            item,
-                            "statistics/ratings/ranks/rank[@name='boardgame']",
-                            "value",
-                        )
-                    ),
+                    rank=int(rank_str),
                     rating=float(xml_get(item, "statistics/ratings/average", "value")),
                     weight=float(
                         xml_get(item, "statistics/ratings/averageweight", "value")
@@ -291,6 +322,13 @@ def get_game_full_metadata(
                     expansions=get_links(item, "boardgameexpansion"),
                 )
             )
+
+        return games
+
+    games = []
+    results = executor.map(request_for_chunk, chunked(metas, API_BATCH_SIZE))
+    for result in results:
+        games.extend(result)
 
     return games
 
@@ -318,7 +356,21 @@ def main() -> None:
     type=click.Path(),
     help="BGG cache file path.",
 )
-def run_ingest(connection: Optional[str], dry_run: bool, cache_path: str) -> None:
+@click.option(
+    "--scrape-threads", default=10, help="Number of threads to use for scraping BGG."
+)
+@click.option(
+    "--ingest-threads",
+    default=2,
+    help="Number of threads to use updating Elasticsearch indices.",
+)
+def run_ingest(
+    connection: Optional[str],
+    dry_run: bool,
+    cache_path: str,
+    scrape_threads: int,
+    ingest_threads: int,
+) -> None:
     """
     Scrape board game metadata from BoardGameGeek (BGG).
     """
@@ -329,28 +381,50 @@ def run_ingest(connection: Optional[str], dry_run: bool, cache_path: str) -> Non
 
     es = Elasticsearch(connection) if connection else None
 
+    print("Scraping BGG metadata...")
     with open_cache(cache_path) as cache:
-        print("Scraping BGG metadata...")
-        metas = get_game_basic_metadata(cache)
-        games = get_game_full_metadata(cache, metas)
+        with ThreadPoolExecutor(max_workers=scrape_threads) as executor:
+            metas = get_game_basic_metadata(
+                cache, executor, request_batch_size=scrape_threads
+            )
+            games = get_game_full_metadata(cache, executor, metas)
 
     if not dry_run:
         assert es is not None, "elasticsearch connection required"
         es.indices.create(index=ES_INDEX_NAME, ignore=400)
 
-    print("Ingesting BGG metadata into elastic search...")
-    for i, game in enumerate(games):
-        print(
-            f"{'(dry run)' if dry_run else ''} "
-            f"Ingesting '{game.name}' ({i + 1}/{len(games)})..."
-        )
+    def index_actions() -> Iterator["elasticsearch.helpers.Action"]:
+        """
+        Generator of elasticsearch indexing actions.
+        """
+        for i, game in enumerate(games):
+            print(
+                f"{'(dry run)' if dry_run else ''} "
+                f"Ingesting '{game.name}' ({i + 1}/{len(games)})..."
+            )
 
-        if not dry_run:
-            assert es is not None, "elasticsearch connection required"
-            body = game._asdict()
+            doc = game._asdict()
             for key in ["categories", "families", "mechanics", "expansions"]:
-                body[key] = [link._asdict() for link in body[key]]
-            es.index(index=ES_INDEX_NAME, id=game.id, body=body)
+                doc[key] = [link._asdict() for link in doc[key]]
+
+            yield {
+                "_op_type": "index",
+                "_id": game.id,
+                "_index": ES_INDEX_NAME,
+                "doc": doc,
+            }
+
+    print("Ingesting BGG metadata into elastic search...")
+    if not dry_run:
+        assert es is not None, "elasticsearch connection required"
+        deque(
+            elasticsearch.helpers.parallel_bulk(
+                es, index_actions(), thread_count=ingest_threads
+            ),
+            maxlen=0,
+        )
+    else:
+        deque(index_actions(), maxlen=0)
 
     if not dry_run:
         assert es is not None, "elasticsearch connection required"

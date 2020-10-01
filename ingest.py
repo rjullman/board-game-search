@@ -222,9 +222,7 @@ def get_game_basic_metadata(cache: PageCache) -> List[GameBasicMetadata]:
             if rank is None:
                 return metas
 
-            metas.append(
-                GameBasicMetadata(id=int(id_str), slug=slug)
-            )
+            metas.append(GameBasicMetadata(id=int(id_str), slug=slug))
 
     raise ValueError("Unreachable")
 
@@ -335,6 +333,10 @@ def run_ingest(connection: Optional[str], dry_run: bool, cache_path: str) -> Non
         print("Scraping BGG metadata...")
         metas = get_game_basic_metadata(cache)
         games = get_game_full_metadata(cache, metas)
+
+    if not dry_run:
+        assert es is not None, "elasticsearch connection required"
+        es.indices.create(index=ES_INDEX_NAME, ignore=400)
 
     print("Ingesting BGG metadata into elastic search...")
     for i, game in enumerate(games):

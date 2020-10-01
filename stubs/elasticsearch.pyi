@@ -22,6 +22,9 @@ class Indices:
     def refresh(self, index: str) -> None:
         ...
 
+    def create(self, *, index: str, ignore: int) -> None:
+        ...
+
 
 class Elasticsearch:
     indices: Indices

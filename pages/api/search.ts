@@ -4,7 +4,7 @@ import { Filters } from "../../lib/api";
 import db from "../../lib/db";
 
 const AGE_RANGES = {
-  [Filters.Age0To4]: { range: { min_age: { gte: 0, lte: 4 } } },
+  [Filters.Age0To4]: { range: { min_age: { gte: 1, lte: 4 } } },
   [Filters.Age5To10]: { range: { min_age: { gte: 5, lte: 10 } } },
   [Filters.Age11To17]: { range: { min_age: { gte: 11, lte: 17 } } },
   [Filters.Age18To20]: { range: { min_age: { gte: 18, lte: 20 } } },

@@ -93,9 +93,9 @@ const AccordianSection: React.FC<{
 const LabeledStat: React.FC<{
   stat: string | number;
   label: string;
-  sublabel?: string;
+  sublabel?: React.ReactElement | string;
 }> = ({ stat, label, sublabel }) => (
-  <div className="flex-grow flex-shrink w-1/2 py-2 md:w-auto md:py-0">
+  <div className="flex-grow flex-shrink w-1/2 py-2 md:w-1/4 md:py-0">
     <div className="text-center">
       <div className="text-sm text-gray-600">{label}</div>
       <div className="text-lg text-indigo-900 font-semibold tracking-wider">
@@ -132,6 +132,14 @@ const TagList: React.FC<{
 };
 
 const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
+  const approxInThousands = (num: number): string => {
+    if (num > 10000) {
+      return `${(num / 1000).toFixed(0)}k`;
+    } else if (num > 1000) {
+      return `${(num / 1000).toFixed(1)}k`;
+    }
+    return num.toString();
+  };
   const buyLink = `https://boardgamegeek.com/boardgame/${game.id}/${game.slug}#buyacopy`;
   return (
     <div
@@ -178,7 +186,13 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
             <LabeledStat
               label="rank"
               stat={game.rank}
-              sublabel={`rated ${game.rating.toFixed(1)}/10`}
+              sublabel={
+                <>
+                  {game.rating.toFixed(1)}/10 (
+                  {approxInThousands(game.num_ratings)}
+                  <span className="inline md:hidden lg:inline"> ratings</span>)
+                </>
+              }
             />
             <LabeledStat
               label="players"

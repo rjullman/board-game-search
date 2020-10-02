@@ -26,6 +26,7 @@ export type Game = {
   min_age: number;
   weight: number;
   rating: number;
+  num_ratings: number;
   year_published: number;
   categories: EntityLink[];
   mechanics: EntityLink[];

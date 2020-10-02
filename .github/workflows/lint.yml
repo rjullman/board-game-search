@@ -6,54 +6,54 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v1
-      with:
-        node-version: '10.x'
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: "10.x"
 
-    - name: Cache/restore Node.js dependencies
-      uses: actions/cache@v2
-      with:
-        path: ./node_modules
-        key: ${{ runner.os }}-build-node-${{ hashFiles('**/yarn.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-build-node-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
+      - name: Cache/restore Node.js dependencies
+        uses: actions/cache@v2
+        with:
+          path: ./node_modules
+          key: ${{ runner.os }}-build-node-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-build-node-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
 
-    - name: Install Node.js dependencies
-      run: yarn install
+      - name: Install Node.js dependencies
+        run: yarn install
 
-    - name: Lint Typescript code
-      run: yarn lint
+      - name: Lint Typescript code
+        run: yarn lint
 
-    - name: Build Typescript code
-      run: yarn build
+      - name: Build Typescript code
+        run: yarn build
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8' 
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
 
-    - name: Cache/restore Python dependencies
-      uses: actions/cache@v2
-      with:
-        path: ./env
-        key: ${{ runner.os }}-build-python-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-build-python-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
+      - name: Cache/restore Python dependencies
+        uses: actions/cache@v2
+        with:
+          path: ./env
+          key: ${{ runner.os }}-build-python-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-build-python-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
 
-    - name: Install Python dependencies
-      run: |
-        python3 -m venv env
-        . env/bin/activate
-        pip install -r requirements.txt
+      - name: Install Python dependencies
+        run: |
+          python3 -m venv env
+          . env/bin/activate
+          pip install -r requirements.txt
 
-    - name: Lint Python code
-      run: |
-        . env/bin/activate
-        ./.github/lint-python
+      - name: Lint Python code
+        run: |
+          . env/bin/activate
+          ./.github/lint-python

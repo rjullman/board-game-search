@@ -11,7 +11,17 @@ from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from io import BytesIO
-from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, TypeVar
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    TypeVar,
+)
 
 import click
 import elasticsearch.helpers
@@ -30,6 +40,8 @@ BGG_THING_API_URL = "https://boardgamegeek.com/xmlapi2/thing?stats=1&id={ids}"
 API_BATCH_SIZE = 1000
 
 ES_INDEX_NAME = "boardgames"
+
+ES_MAX_SEARCH_WINDOW = 10000
 
 
 class GameBasicMetadata(NamedTuple):
@@ -228,7 +240,11 @@ def open_cache(filename: str) -> Iterator[PageCache]:
 
 
 def get_game_basic_metadata(
-    cache: PageCache, executor: ThreadPoolExecutor, request_batch_size: int = 50
+    cache: PageCache,
+    executor: ThreadPoolExecutor,
+    *,
+    max_rank: Optional[int] = None,
+    request_batch_size: int = 50,
 ) -> List[GameBasicMetadata]:
     """
     Gets the BGG basic metadata for all ranked games on BGG.
@@ -257,7 +273,7 @@ def get_game_basic_metadata(
             )
             rank = xml_get_opt(row, "td[@class='collection_rank']/a[@name]", "name")
 
-            if rank is None:
+            if rank is None or (max_rank and int(rank) > max_rank):
                 return metas, False
 
             metas.append(
@@ -271,7 +287,7 @@ def get_game_basic_metadata(
         return metas, True
 
     metas: List[GameBasicMetadata] = []
-    page_num = 0
+    page_num = 1
     while True:
         results = executor.map(
             scrape_page, range(page_num, page_num + request_batch_size)
@@ -395,6 +411,16 @@ def main() -> None:
     "--dry-run", is_flag=True, help="Skip ingesting into the database (scraping only)."
 )
 @click.option(
+    "--max-rank",
+    type=int,
+    help="The max rank (on BGG) of the board games to scrape.",
+)
+@click.option(
+    "--drop-index",
+    is_flag=True,
+    help="Drop the Elasticsearch index before indexing new data.",
+)
+@click.option(
     "--cache",
     "cache_path",
     default=".bggcache.json",
@@ -407,12 +433,14 @@ def main() -> None:
 @click.option(
     "--ingest-threads",
     default=2,
-    help="Number of threads to use updating Elasticsearch indices.",
+    help="Number of threads to use updating the Elasticsearch index.",
 )
 def run_ingest(
     connection: Optional[str],
     connection_from_env: bool,
     dry_run: bool,
+    max_rank: Optional[int],
+    drop_index: bool,
     cache_path: str,
     scrape_threads: int,
     ingest_threads: int,
@@ -443,22 +471,58 @@ def run_ingest(
     with open_cache(cache_path) as cache:
         with ThreadPoolExecutor(max_workers=scrape_threads) as executor:
             metas = get_game_basic_metadata(
-                cache, executor, request_batch_size=scrape_threads
+                cache, executor, max_rank=max_rank, request_batch_size=scrape_threads
             )
             games = get_game_full_metadata(cache, executor, metas)
 
     if not dry_run:
         assert es is not None, "elasticsearch connection required"
+        if drop_index:
+            print("Dropping old Elasticsearch index...")
+            es.indices.delete(index=ES_INDEX_NAME, ignore=[400, 404])
         es.indices.create(index=ES_INDEX_NAME, ignore=400)
 
-    def index_actions() -> Iterator["elasticsearch.helpers.Action"]:
+    def games_to_delete() -> Iterator[Tuple[str, str]]:
+        """
+        Finds all the old games (from previous indexing) that should be deleted.
+
+        Returns an iterator of tuples containing the game id and game name.
+        """
+        if es is None:
+            return
+
+        count = 0
+        while True:
+            res = es.search(
+                index=ES_INDEX_NAME,
+                body={
+                    "_source": ["name"],
+                    "from": count,
+                    "size": ES_MAX_SEARCH_WINDOW,
+                    "query": {
+                        "bool": {
+                            "must_not": [
+                                {"ids": {"values": [game.id for game in games]}}
+                            ]
+                        }
+                    },
+                },
+            )
+            hits = res["hits"]["hits"]
+            yield from [(hit["_id"], hit["_source"]["name"]) for hit in hits]
+
+            count += len(hits)
+            if len(hits) < ES_MAX_SEARCH_WINDOW:
+                return
+
+    def index_actions() -> Iterator[Dict[str, Any]]:
         """
         Generator of elasticsearch indexing actions.
         """
         for i, game in enumerate(games):
             print(
                 f"{'(dry run)' if dry_run else ''} "
-                f"Ingesting '{game.name}' ({i + 1}/{len(games)})..."
+                f"Indexing '{game.name}' ({i + 1}/{len(games)})..."
             )
 
             doc = game._asdict()
@@ -469,10 +533,18 @@ def run_ingest(
                 "_op_type": "index",
                 "_id": game.id,
                 "_index": ES_INDEX_NAME,
-                "doc": doc,
+                **doc,
             }
 
-    print("Ingesting BGG metadata into elastic search...")
+        for iden, name in games_to_delete():
+            print(f"{'(dry run)' if dry_run else ''} Deleting '{name}' ({iden})...")
+            yield {
+                "_op_type": "delete",
+                "_id": iden,
+                "_index": ES_INDEX_NAME,
+            }
+
+    print("Ingesting BGG metadata into Elasticsearch...")
     if not dry_run:
         assert es is not None, "elasticsearch connection required"
         deque(

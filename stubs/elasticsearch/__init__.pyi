@@ -6,7 +6,8 @@ class SearchResultHitsTotal(TypedDict):
 
 
 class SearchResultHit(TypedDict):
-    _source: Dict[str, Union[str, int]]
+    _id: str
+    _source: Dict[str, Any]
 
 
 class SearchResultHits(TypedDict):
@@ -22,7 +23,10 @@ class Indices:
     def refresh(self, index: str) -> None:
         ...
 
-    def create(self, *, index: str, ignore: int) -> None:
+    def create(self, *, index: str, ignore: Union[int, List[int]]) -> None:
+        ...
+
+    def delete(self, *, index: str, ignore: Union[int, List[int]]) -> None:
         ...
 
 

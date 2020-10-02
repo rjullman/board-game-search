@@ -57,5 +57,3 @@ jobs:
       run: |
         . env/bin/activate
         ./.github/lint-python
-
-

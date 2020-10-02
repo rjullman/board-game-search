@@ -4,6 +4,7 @@ Download and process board game data from BoardGameGeek (BGG).
 
 import itertools
 import json
+import os
 import sys
 import threading
 from collections import deque
@@ -20,6 +21,8 @@ from lxml import etree
 from lxml.etree import _Element as XMLElement
 
 T = TypeVar("T")
+
+CONNECTION_ENV_VAR = "ELASTICSEARCH_ENDPOINT"
 
 BGG_TOP_RANKED_GAMES_URL = "https://boardgamegeek.com/browse/boardgame/page/{page}"
 BGG_THING_API_URL = "https://boardgamegeek.com/xmlapi2/thing?stats=1&id={ids}"
@@ -381,7 +384,12 @@ def main() -> None:
 @main.command("run")
 @click.option(
     "--connection",
-    help="Elastic search connection string.",
+    help="Elasticsearch connection string.",
+)
+@click.option(
+    "--connection-from-env",
+    is_flag=True,
+    help=f"Read Elasticsearch connection string from env var '{CONNECTION_ENV_VAR}'.",
 )
 @click.option(
     "--dry-run", is_flag=True, help="Skip ingesting into the database (scraping only)."
@@ -403,6 +411,7 @@ def main() -> None:
 )
 def run_ingest(
     connection: Optional[str],
+    connection_from_env: bool,
     dry_run: bool,
     cache_path: str,
     scrape_threads: int,
@@ -411,10 +420,22 @@ def run_ingest(
     """
     Scrape board game metadata from BoardGameGeek (BGG).
     """
-    if not connection and not dry_run:
+    if not connection and not connection_from_env and not dry_run:
         die(
-            "Error: at least one of options '--connection' or '--dry-run' are required."
+            "Error: at least one of options '--connection', '--connection-from-env', "
+            "or '--dry-run' are required."
         )
+
+    if connection and connection_from_env:
+        die("Error: cannot set both '--connection' and '--connection-from-env'.")
+
+    if connection_from_env:
+        connection = os.getenv(CONNECTION_ENV_VAR)
+        if not connection:
+            die(
+                "Error: '--connection-from-env' set but could not find env var "
+                f"'{CONNECTION_ENV_VAR}'."
+            )
 
     es = Elasticsearch(connection) if connection else None
 

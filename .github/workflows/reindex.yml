@@ -1,0 +1,44 @@
+name: Reindex BoardGameGeek
+
+on: 
+  workflow_dispatch:
+     inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Test scenario tags'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8' 
+
+    - name: Cache/restore Python dependencies
+      uses: actions/cache@v2
+      with:
+        path: ./env
+        key: ${{ runner.os }}-build-python-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-build-python-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
+
+    - name: Install Python dependencies
+      run: |
+        python3 -m venv env
+        . env/bin/activate
+        pip install -r requirements.txt
+
+    - name: Run reindex
+      env:
+        ELASTICSEARCH_ENDPOINT: ${{ secrets.ELASTICSEARCH_ENDPOINT }}
+      run: |
+        . env/bin/activate
+        python ingest.py run --connection-from-env

@@ -17,6 +17,7 @@ export type Game = {
   rank: number;
   thumbnail: string;
   description: string;
+  brief_description: string;
   expected_playtime: number;
   min_playtime: number;
   max_playtime: number;

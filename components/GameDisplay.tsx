@@ -208,6 +208,11 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
       </div>
       <div className="px-3 sm:px-5 pb-2 pt-1 md:pt-2 divide-y-4 divide-dashed">
         <AccordianSection title="Description">
+          {game.brief_description && (
+            <div className="border-gray-200 border-l-8 mb-1 font-light px-6 py-3 text-base">
+              {game.brief_description}
+            </div>
+          )}
           <div>
             {(game.description || "Missing game description.")
               .split("&#10;")

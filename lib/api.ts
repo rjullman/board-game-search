@@ -77,12 +77,24 @@ export enum Filters {
   Players3 = "3",
   Players4 = "4",
   Players5Plus = "5+",
+
+  RankAny = "any",
+  RankTop100 = "top 100",
+  RankTop500 = "top 500",
+  RankTop2500 = "top 2500",
+
+  RatingCountAny = "any",
+  RatingCount100Plus = "100+",
+  RatingCount1000Plus = "1k+",
+  RatingCount10000Plus = "10k+",
 }
 
 export type SearchFilters = {
   keywords?: string;
   sort?: string;
+  rank?: string;
   rating?: string;
+  ratingCount?: string;
   weight?: string[];
   age?: string[];
   playtime?: string[];
@@ -97,7 +109,9 @@ export async function search(
     {
       keywords: StringParam,
       sort: StringParam,
+      rank: StringParam,
       rating: StringParam,
+      ratingCount: StringParam,
       age: ArrayParam,
       weight: ArrayParam,
       playtime: ArrayParam,

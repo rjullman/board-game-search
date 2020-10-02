@@ -133,7 +133,9 @@ const SearchFiltersMenu: React.FC<{
   const [query, setQuery] = useQueryParams({
     keywords: withDefault(StringParam, ""),
     sort: withDefault(StringParam, Filters.SortByRelevance),
+    rank: withDefault(StringParam, Filters.RankAny),
     rating: withDefault(StringParam, Filters.RatingAny),
+    ratingCount: withDefault(StringParam, Filters.RatingCountAny),
     weight: withDefault(DelimitedArrayParam, []),
     age: withDefault(DelimitedArrayParam, []),
     playtime: withDefault(DelimitedArrayParam, []),
@@ -169,7 +171,9 @@ const SearchFiltersMenu: React.FC<{
       onChangeFilters({
         keywords: query.keywords,
         sort: query.sort,
+        rank: query.rank,
         rating: query.rating,
+        ratingCount: query.ratingCount,
         weight,
         age,
         playtime,
@@ -179,7 +183,9 @@ const SearchFiltersMenu: React.FC<{
   }, [
     query.keywords,
     query.sort,
+    query.rank,
     query.rating,
+    query.ratingCount,
     weight,
     age,
     playtime,
@@ -229,30 +235,18 @@ const SearchFiltersMenu: React.FC<{
         onChange={(vals) => setQuery({ sort: vals[0] })}
       />
       <FilterGroup
-        type="radio"
-        label="Rating"
-        options={[
-          Filters.RatingAny,
-          Filters.Rating2Plus,
-          Filters.Rating5Plus,
-          Filters.Rating8Plus,
-        ]}
-        tooltip="BoardGameGeek user rating of game enjoyability and replayability."
-        selected={[query.rating]}
-        onChange={(vals) => setQuery({ rating: vals[0] })}
-      />
-      <FilterGroup
         type="checkbox"
-        label="Age"
-        options={[
-          Filters.Age0To4,
-          Filters.Age5To10,
-          Filters.Age11To17,
-          Filters.Age18To20,
-          Filters.Age21Plus,
+        label="Players"
+        options={["1 Player", "2 Player", "3 Player", "4 Player", "5+ Player"]}
+        values={[
+          Filters.Players1,
+          Filters.Players2,
+          Filters.Players3,
+          Filters.Players4,
+          Filters.Players5Plus,
         ]}
-        selected={age}
-        onChange={(vals) => setQuery({ age: vals })}
+        selected={players}
+        onChange={(vals) => setQuery({ players: vals })}
       />
       <FilterGroup
         type="checkbox"
@@ -269,6 +263,19 @@ const SearchFiltersMenu: React.FC<{
       />
       <FilterGroup
         type="checkbox"
+        label="Age"
+        options={[
+          Filters.Age0To4,
+          Filters.Age5To10,
+          Filters.Age11To17,
+          Filters.Age18To20,
+          Filters.Age21Plus,
+        ]}
+        selected={age}
+        onChange={(vals) => setQuery({ age: vals })}
+      />
+      <FilterGroup
+        type="checkbox"
         label="Playtime"
         options={["0–30 mins", "30–60 mins", "60–120 mins", "120+ mins"]}
         values={[
@@ -281,18 +288,43 @@ const SearchFiltersMenu: React.FC<{
         onChange={(vals) => setQuery({ playtime: vals })}
       />
       <FilterGroup
-        type="checkbox"
-        label="Players"
-        options={["1 Player", "2 Player", "3 Player", "4 Player", "5+ Player"]}
-        values={[
-          Filters.Players1,
-          Filters.Players2,
-          Filters.Players3,
-          Filters.Players4,
-          Filters.Players5Plus,
+        type="radio"
+        label="Rank"
+        options={[
+          Filters.RankAny,
+          Filters.RankTop2500,
+          Filters.RankTop500,
+          Filters.RankTop100,
         ]}
-        selected={players}
-        onChange={(vals) => setQuery({ players: vals })}
+        tooltip="BoardGameGeek ranking of overall game popularity (e.g. rating, number of reviews, discussion online)."
+        selected={[query.rank]}
+        onChange={(vals) => setQuery({ rank: vals[0] })}
+      />
+      <FilterGroup
+        type="radio"
+        label="Rating"
+        options={[
+          Filters.RatingAny,
+          Filters.Rating2Plus,
+          Filters.Rating5Plus,
+          Filters.Rating8Plus,
+        ]}
+        tooltip="BoardGameGeek user rating of game enjoyability and replayability. Highly rated games are not always highly ranked."
+        selected={[query.rating]}
+        onChange={(vals) => setQuery({ rating: vals[0] })}
+      />
+      <FilterGroup
+        type="radio"
+        label="Rating Count"
+        options={[
+          Filters.RatingCountAny,
+          Filters.RatingCount100Plus,
+          Filters.RatingCount1000Plus,
+          Filters.RatingCount10000Plus,
+        ]}
+        tooltip="Number of BoardGameGeek user ratings."
+        selected={[query.ratingCount]}
+        onChange={(vals) => setQuery({ ratingCount: vals[0] })}
       />
     </div>
   );

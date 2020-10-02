@@ -11,10 +11,22 @@ const AGE_RANGES = {
   [Filters.Age21Plus]: { range: { min_age: { gte: 21 } } },
 };
 
+const RANK_RANGES = {
+  [Filters.RankTop2500]: { range: { rank: { lte: 2500 } } },
+  [Filters.RankTop500]: { range: { rank: { lte: 500 } } },
+  [Filters.RankTop100]: { range: { rank: { lte: 100 } } },
+};
+
 const RATING_RANGES = {
   [Filters.Rating2Plus]: { range: { rating: { gte: 2 } } },
   [Filters.Rating5Plus]: { range: { rating: { gte: 5 } } },
   [Filters.Rating8Plus]: { range: { rating: { gte: 8 } } },
+};
+
+const RATING_COUNT_RANGES = {
+  [Filters.RatingCount100Plus]: { range: { num_ratings: { gte: 100 } } },
+  [Filters.RatingCount1000Plus]: { range: { num_ratings: { gte: 1000 } } },
+  [Filters.RatingCount10000Plus]: { range: { num_ratings: { gte: 10000 } } },
 };
 
 const WEIGHT_RANGES = {
@@ -172,7 +184,9 @@ export default async (
         bool: {
           filter: [
             createFilterClause(AGE_RANGES, req.query["age"]),
+            createFilterClause(RANK_RANGES, req.query["rank"]),
             createFilterClause(RATING_RANGES, req.query["rating"]),
+            createFilterClause(RATING_COUNT_RANGES, req.query["ratingCount"]),
             createFilterClause(WEIGHT_RANGES, req.query["weight"]),
             createFilterClause(PLAYTIME_RANGES, req.query["playtime"]),
             createFilterClause(PLAYERS_RANGES, req.query["players"]),

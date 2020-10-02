@@ -182,5 +182,6 @@ export default async (
       },
     },
   });
+  res.setHeader("cache-control", "s-maxage=86400, stale-while-revalidate"); // cache for a day
   return res.status(200).json(results["hits"]);
 };

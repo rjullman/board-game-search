@@ -12,5 +12,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Vercel CLI
+.vercel
+
 # Repository specific
 .bggcache.json

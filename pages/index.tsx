@@ -125,7 +125,22 @@ const HomePage: React.FC = () => {
       <Sidebar
         open={sidebarOpen}
         onSetOpen={setSidebarOpen}
-        styles={{ sidebar: { position: "fixed", zIndex: "50" } }}
+        styles={{
+          sidebar: {
+            position: "fixed",
+            zIndex: "50",
+          },
+          root: {
+            position: "undefined",
+          },
+          content: {
+            position: "undefined",
+            top: "undefined",
+            left: "undefined",
+            right: "undefined",
+            bottom: "undefined",
+          },
+        }}
         sidebar={
           <div className="px-6 bg-gray-100 min-h-screen">
             <SearchFiltersMenu

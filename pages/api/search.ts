@@ -113,19 +113,17 @@ function createFilterClause(
   return filters.length !== 0 ? { bool: { should: filters } } : undefined;
 }
 
-function createSortClause(params?: string | string[]) {
+function createSortClause(params?: string | string[], reverse = false) {
   if (!params) {
     return undefined;
   }
   switch (typeof params === "string" ? params : params[0]) {
-    case Filters.SortByRatingDec:
-      return { rating: { order: "desc" } };
-    case Filters.SortByRatingInc:
-      return { rating: { order: "asc" } };
-    case Filters.SortByWeightDec:
-      return { weight: { order: "desc" } };
-    case Filters.SortByWeightInc:
-      return { weight: { order: "asc" } };
+    case Filters.SortByRank:
+      return { rank: { order: reverse ? "desc" : "asc" } };
+    case Filters.SortByRating:
+      return { rating: { order: reverse ? "asc" : "desc" } };
+    case Filters.SortByWeight:
+      return { weight: { order: reverse ? "desc" : "asc", missing: "_last" } };
     default:
       return undefined;
   }
@@ -155,6 +153,9 @@ function createSearchAfterClause(params?: string | string[]) {
   return (typeof params === "string" ? [params] : params).map(
     (item, i, arr) => {
       if (i !== arr.length - 1) {
+        if (item.includes("Infinity")) {
+          return item;
+        }
         if (item.includes(".")) {
           return Number.parseFloat(item);
         }
@@ -169,16 +170,20 @@ export default async (
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<void> => {
+  const reverse =
+    typeof req.query["reverse"] === "string"
+      ? req.query["reverse"] === "1"
+      : false;
   const { body: results } = await db.search({
     index: "boardgames",
     body: {
       size: 10,
       search_after: createSearchAfterClause(req.query["searchAfterKey"]),
       sort: [
-        createSortClause(req.query["sort"]),
+        createSortClause(req.query["sort"], reverse),
         "_score",
         req.query["keywords"] ? undefined : { rank: { order: "asc" } },
-        "_id",
+        { id: { order: reverse ? "desc" : "asc" } },
       ].filter((clause) => clause !== undefined),
       query: {
         bool: {

@@ -1,5 +1,6 @@
 import {
   encodeQueryParams,
+  BooleanParam,
   StringParam,
   ArrayParam,
 } from "serialize-query-params";
@@ -15,16 +16,16 @@ export type Game = {
   slug: string;
   name: string;
   rank: number;
-  thumbnail: string;
-  description: string;
-  brief_description: string;
+  thumbnail?: string;
+  description?: string;
+  brief_description?: string;
   expected_playtime: number;
   min_playtime: number;
   max_playtime: number;
   min_players: number;
   max_players: number;
   min_age: number;
-  weight: number;
+  weight?: number;
   rating: number;
   num_ratings: number;
   year_published: number;
@@ -46,52 +47,52 @@ type Results = {
 
 export enum Filters {
   SortByRelevance = "relevance",
-  SortByRatingDec = "rating-dec",
-  SortByRatingInc = "rating-inc",
-  SortByWeightDec = "weight-dec",
-  SortByWeightInc = "weight-inc",
+  SortByRank = "rank",
+  SortByRating = "rating",
+  SortByWeight = "weight",
 
   RatingAny = "any",
-  Rating2Plus = "2.0+",
-  Rating5Plus = "5.0+",
-  Rating8Plus = "8.0+",
+  Rating2Plus = "2p",
+  Rating5Plus = "5p",
+  Rating8Plus = "8p",
 
-  Age0To4 = "0–4",
-  Age5To10 = "5–10",
-  Age11To17 = "11–17",
-  Age18To20 = "18–20",
-  Age21Plus = "21+",
+  Age0To4 = "0t4",
+  Age5To10 = "5t10",
+  Age11To17 = "11t17",
+  Age18To20 = "18t20",
+  Age21Plus = "21p",
 
-  Weight1to2 = "1.0–2.0",
-  Weight2to3 = "2.0–3.0",
-  Weight3to4 = "3.0–4.0",
-  Weight4to5 = "4.0–5.0",
+  Weight1to2 = "1t2",
+  Weight2to3 = "2t3",
+  Weight3to4 = "3t4",
+  Weight4to5 = "4t5",
 
-  Playtime0to30 = "0–30",
-  Playtime30to60 = "30–60",
-  Playtime60to120 = "60–120",
-  Playtime120Plus = "120+",
+  Playtime0to30 = "0t30",
+  Playtime30to60 = "30t60",
+  Playtime60to120 = "60t120",
+  Playtime120Plus = "120p",
 
   Players1 = "1",
   Players2 = "2",
   Players3 = "3",
   Players4 = "4",
-  Players5Plus = "5+",
+  Players5Plus = "5p",
 
   RankAny = "any",
-  RankTop100 = "top 100",
-  RankTop500 = "top 500",
-  RankTop2500 = "top 2500",
+  RankTop100 = "t100",
+  RankTop500 = "t500",
+  RankTop2500 = "t2500",
 
   RatingCountAny = "any",
-  RatingCount100Plus = "100+",
-  RatingCount1000Plus = "1k+",
-  RatingCount10000Plus = "10k+",
+  RatingCount100Plus = "100p",
+  RatingCount1000Plus = "1kp",
+  RatingCount10000Plus = "10kp",
 }
 
 export type SearchFilters = {
   keywords?: string;
   sort?: string;
+  reverse?: boolean;
   rank?: string;
   rating?: string;
   ratingCount?: string;
@@ -109,6 +110,7 @@ export async function search(
     {
       keywords: StringParam,
       sort: StringParam,
+      reverse: BooleanParam,
       rank: StringParam,
       rating: StringParam,
       ratingCount: StringParam,

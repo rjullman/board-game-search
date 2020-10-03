@@ -214,7 +214,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
             />
             <LabeledStat
               label="weight"
-              stat={game.weight == 0 ? "?" : `${game.weight.toFixed(1)}/5`}
+              stat={game.weight ? `${game.weight.toFixed(1)}/5` : "?"}
               sublabel="complexity"
             />
           </div>

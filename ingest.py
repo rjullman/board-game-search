@@ -85,7 +85,7 @@ class Game(NamedTuple):
     rank: int
     rating: float
     num_ratings: int
-    weight: float
+    weight: Optional[float]
     year_published: int
     categories: List[EntityLink]
     mechanics: List[EntityLink]
@@ -349,6 +349,9 @@ def get_game_full_metadata(
                 continue
 
             item_id = int(xml_get(item, None, "id"))
+            weight = float(
+                xml_get(item, "statistics/ratings/averageweight", "value")
+            )
             games.append(
                 Game(
                     id=item_id,
@@ -368,9 +371,7 @@ def get_game_full_metadata(
                     num_ratings=int(
                         xml_get(item, "statistics/ratings/usersrated", "value")
                     ),
-                    weight=float(
-                        xml_get(item, "statistics/ratings/averageweight", "value")
-                    ),
+                    weight=weight if weight != 0 else None,
                     year_published=int(xml_get(item, "yearpublished", "value")),
                     categories=get_links(item, "boardgamecategory"),
                     mechanics=get_links(item, "boardgamemechanic"),

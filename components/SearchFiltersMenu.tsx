@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   useQueryParams,
   withDefault,
+  BooleanParam,
   StringParam,
   DelimitedArrayParam,
 } from "use-query-params";
+import classnames from "classnames";
 
 import { Filters, SearchFilters } from "../lib/api";
 
@@ -13,13 +15,25 @@ import HelpTooltip from "./HelpTooltip";
 
 const FilterGroup: React.FC<{
   type: "checkbox" | "radio" | "select";
-  label: string;
+  label?: string;
   options: string[];
   values?: string[];
   selected?: string[];
+  disabled?: boolean;
   tooltip?: string;
   onChange?: (vals: string[]) => void;
-}> = ({ type, label, options, values, selected = [], tooltip, onChange }) => {
+  className?: string;
+}> = ({
+  type,
+  label = "",
+  options,
+  values,
+  selected = [],
+  disabled = false,
+  tooltip,
+  onChange,
+  className = "mt-3",
+}) => {
   // Prefix forms groups with a UUID to allow multiple groups with the same
   // "label" on a page. This can be useful if you need to render multiple copies
   // of the same filter group depending on screen size.
@@ -85,13 +99,19 @@ const FilterGroup: React.FC<{
       // fallthrough
       case "radio":
         return options.map((option, i) => (
-          <label key={option} className="flex items-center">
+          <label
+            key={option}
+            className={classnames("flex items-center", {
+              "opacity-50": disabled,
+            })}
+          >
             <input
               type={type}
               className={formClassname()}
               name={`${uid}-${label}`}
               value={getValue(i)}
               checked={selected.includes(getValue(i))}
+              disabled={disabled}
               onChange={(e) => changeOption(e.target.value)}
             />
             <span className="ml-2">{option}</span>
@@ -105,7 +125,7 @@ const FilterGroup: React.FC<{
             value={selected.length === 0 ? getValue(0) : selected[0]}
           >
             {options.map((option, i) => (
-              <option key={option} value={getValue(i)}>
+              <option key={option} value={getValue(i)} disabled={disabled}>
                 {option}
               </option>
             ))}
@@ -118,7 +138,7 @@ const FilterGroup: React.FC<{
   };
 
   return (
-    <div className="flex flex-col mt-3">
+    <div className={`flex flex-col ${className}`}>
       <div className="flex items-center text-base font-bold">
         {label} {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
       </div>
@@ -133,6 +153,7 @@ const SearchFiltersMenu: React.FC<{
   const [query, setQuery] = useQueryParams({
     keywords: withDefault(StringParam, ""),
     sort: withDefault(StringParam, Filters.SortByRelevance),
+    reverse: withDefault(BooleanParam, false),
     rank: withDefault(StringParam, Filters.RankAny),
     rating: withDefault(StringParam, Filters.RatingAny),
     ratingCount: withDefault(StringParam, Filters.RatingCountAny),
@@ -142,6 +163,13 @@ const SearchFiltersMenu: React.FC<{
     players: withDefault(DelimitedArrayParam, []),
   });
   const searchInput = useRef<HTMLInputElement>(null);
+
+  // This allows SSR to work. Otherwise query.sort may be different
+  // on the server and client (server has no query params).
+  const [disableReverse, setDisableReverse] = useState<boolean>(false);
+  useEffect(() => {
+    setDisableReverse(query.sort === Filters.SortByRelevance);
+  }, [query.sort]);
 
   /* eslint-disable react-hooks/exhaustive-deps */
   // Create memoized versions of array fields from useQueryParams
@@ -171,6 +199,7 @@ const SearchFiltersMenu: React.FC<{
       onChangeFilters({
         keywords: query.keywords,
         sort: query.sort,
+        reverse: query.reverse,
         rank: query.rank,
         rating: query.rating,
         ratingCount: query.ratingCount,
@@ -183,6 +212,7 @@ const SearchFiltersMenu: React.FC<{
   }, [
     query.keywords,
     query.sort,
+    query.reverse,
     query.rank,
     query.rating,
     query.ratingCount,
@@ -208,7 +238,7 @@ const SearchFiltersMenu: React.FC<{
       <div className="flex flex-col mt-3">
         <div className="flex items-center text-base font-bold">Keywords</div>
         <input
-          ref={searchInput}
+          value={query.keywords}
           className="form-input mt-1 text-sm"
           placeholder="Search..."
           onChange={(e) => setQuery({ keywords: e.target.value })}
@@ -217,22 +247,24 @@ const SearchFiltersMenu: React.FC<{
       <FilterGroup
         type="select"
         label="Sort By"
-        options={[
-          "Relevance",
-          "Rating (dec)",
-          "Rating (inc)",
-          "Weight (dec)",
-          "Weight (inc)",
-        ]}
+        options={["Relevance", "Rank", "Rating", "Weight"]}
         values={[
           Filters.SortByRelevance,
-          Filters.SortByRatingDec,
-          Filters.SortByRatingInc,
-          Filters.SortByWeightDec,
-          Filters.SortByWeightInc,
+          Filters.SortByRank,
+          Filters.SortByRating,
+          Filters.SortByWeight,
         ]}
         selected={[query.sort]}
         onChange={(vals) => setQuery({ sort: vals[0] })}
+      />
+      <FilterGroup
+        type="checkbox"
+        options={["Reverse Order"]}
+        values={["true"]}
+        selected={[query.reverse ? "true" : "false"]}
+        disabled={disableReverse}
+        onChange={(vals) => setQuery({ reverse: vals[0] === "true" })}
+        className="mt-2 text-sm"
       />
       <FilterGroup
         type="checkbox"
@@ -251,7 +283,8 @@ const SearchFiltersMenu: React.FC<{
       <FilterGroup
         type="checkbox"
         label="Weight"
-        options={[
+        options={["1.0–2.0", "2.0–3.0", "3.0–4.0", "4.0–5.0"]}
+        values={[
           Filters.Weight1to2,
           Filters.Weight2to3,
           Filters.Weight3to4,
@@ -264,7 +297,8 @@ const SearchFiltersMenu: React.FC<{
       <FilterGroup
         type="checkbox"
         label="Age"
-        options={[
+        options={["0–4", "5–10", "11–17", "18–20", "21+"]}
+        values={[
           Filters.Age0To4,
           Filters.Age5To10,
           Filters.Age11To17,
@@ -290,7 +324,8 @@ const SearchFiltersMenu: React.FC<{
       <FilterGroup
         type="radio"
         label="Rank"
-        options={[
+        options={["any", "top 2500", "top 500", "top 100"]}
+        values={[
           Filters.RankAny,
           Filters.RankTop2500,
           Filters.RankTop500,
@@ -303,7 +338,8 @@ const SearchFiltersMenu: React.FC<{
       <FilterGroup
         type="radio"
         label="Rating"
-        options={[
+        options={["any", "2+", "5+", "8+"]}
+        values={[
           Filters.RatingAny,
           Filters.Rating2Plus,
           Filters.Rating5Plus,
@@ -316,7 +352,8 @@ const SearchFiltersMenu: React.FC<{
       <FilterGroup
         type="radio"
         label="Rating Count"
-        options={[
+        options={["any", "100+", "1k+", "10k+"]}
+        values={[
           Filters.RatingCountAny,
           Filters.RatingCount100Plus,
           Filters.RatingCount1000Plus,

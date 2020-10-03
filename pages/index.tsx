@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import classnames from "classnames";
-import Sidebar from "react-sidebar";
 
 import { search, Game, SearchFilters, Filters } from "../lib/api";
 
@@ -9,6 +8,7 @@ import FilterIcon from "../components/FilterIcon";
 import GameDisplay from "../components/GameDisplay";
 import NoSearchResults from "../components/NoSearchResults";
 import SearchFiltersMenu from "../components/SearchFiltersMenu";
+import Sidebar from "../components/Sidebar";
 
 const ShowFiltersButton: React.FC<{
   showDot?: boolean;
@@ -112,6 +112,8 @@ const HomePage: React.FC = () => {
     return (
       active(filters.sort, Filters.SortByRelevance) ||
       active(filters.rating, Filters.RatingAny) ||
+      active(filters.ratingCount, Filters.RatingCountAny) ||
+      active(filters.rank, Filters.RankAny) ||
       active(filters.age) ||
       active(filters.keywords) ||
       active(filters.players) ||
@@ -122,35 +124,12 @@ const HomePage: React.FC = () => {
 
   return (
     <>
-      <Sidebar
-        open={sidebarOpen}
-        onSetOpen={setSidebarOpen}
-        styles={{
-          sidebar: {
-            position: "fixed",
-            zIndex: "50",
-          },
-          root: {
-            position: "undefined",
-          },
-          content: {
-            position: "undefined",
-            top: "undefined",
-            left: "undefined",
-            right: "undefined",
-            bottom: "undefined",
-          },
-        }}
-        sidebar={
-          <div className="px-6 bg-gray-100 min-h-screen">
-            <SearchFiltersMenu
-              onChangeFilters={useCallback((filts) => setFilters(filts), [])}
-            />
-          </div>
-        }
-      >
-        {/* This component requires a child. */}
-        <div />
+      <Sidebar open={sidebarOpen} onSetOpen={setSidebarOpen}>
+        <div className="px-6 bg-gray-100 min-h-screen">
+          <SearchFiltersMenu
+            onChangeFilters={useCallback((filts) => setFilters(filts), [])}
+          />
+        </div>
       </Sidebar>
       <div className="lg:container mx-auto my-4 px-4">
         <ShowFiltersButton

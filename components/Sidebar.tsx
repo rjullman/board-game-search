@@ -4,11 +4,13 @@ import Sidebar from "react-sidebar";
 const SidebarWrapper: React.FC<{
   open: boolean;
   onSetOpen: React.Dispatch<React.SetStateAction<boolean>>;
-}> = ({ open, onSetOpen, children }) => {
+  pullRight?: boolean;
+}> = ({ open, onSetOpen, pullRight = false, children }) => {
   return (
     <Sidebar
       open={open}
       onSetOpen={onSetOpen}
+      pullRight={pullRight}
       styles={{
         sidebar: {
           position: "fixed",
@@ -23,6 +25,9 @@ const SidebarWrapper: React.FC<{
           left: "undefined",
           right: "undefined",
           bottom: "undefined",
+        },
+        overlay: {
+          zIndex: "40",
         },
       }}
       sidebar={children}

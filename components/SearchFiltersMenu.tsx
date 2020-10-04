@@ -260,7 +260,7 @@ const SearchFiltersMenu: React.FC<{
   ]);
 
   return (
-    <div className="py-4 w-100">
+    <div className="w-100">
       <div className="flex flex-row items-center">
         <FilterIcon className="w-5 h-5 mr-2" />
         <div className="text-lg font-bold">Filters</div>

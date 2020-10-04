@@ -8,30 +8,92 @@ import FilterIcon from "../components/FilterIcon";
 import GameDisplay from "../components/GameDisplay";
 import NoSearchResults from "../components/NoSearchResults";
 import SearchFiltersMenu from "../components/SearchFiltersMenu";
+import SiteInfoSidebar from "../components/SiteInfoSidebar";
 import Sidebar from "../components/Sidebar";
 
-const ShowFiltersButton: React.FC<{
-  showDot?: boolean;
-  onClick: React.MouseEventHandler<HTMLButtonElement>;
-}> = ({ onClick, showDot = false }) => (
-  <div className="fixed top-0 left-0 pt-6 pl-6 sm:hidden z-30">
+const CollectionIcon: React.FC<{ className: string }> = ({ className }) => (
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 20 20"
+    fill="currentColor"
+  >
+    <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+  </svg>
+);
+
+const InfoIcon: React.FC<{ className: string }> = ({ className }) => (
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  </svg>
+);
+
+const Topbar: React.FC<{
+  activeFilters: boolean;
+  onClickFilter: () => void;
+  onClickAbout: () => void;
+}> = ({ activeFilters, onClickFilter, onClickAbout }) => {
+  const IconButton: React.FC<{ className?: string; onClick: () => void }> = ({
+    className = "",
+    onClick,
+    children,
+  }) => (
     <button
-      className="relative form-button w-12 h-12 bg-indigo-800 hover:bg-indigo-900 rounded-full bg-red-500 shadow-2xl focus:outline-none"
+      className={classnames(
+        "form-button h-full px-3 hover:text-gray-300 focus:outline-none",
+        className
+      )}
       style={{
         WebkitTapHighlightColor: "transparent",
       }}
       onClick={onClick}
     >
-      <FilterIcon className="w-6 h-6 m-auto text-white" />
-      <div
-        className={classnames(
-          "absolute w-3 h-3 right-0 bottom-0 rounded-full bg-red-600",
-          { hidden: !showDot }
-        )}
-      />
+      {children}
     </button>
-  </div>
-);
+  );
+  return (
+    <div className="fixed inset-0 h-16 w-full z-30 bg-indigo-900">
+      <div className="lg:container mx-auto h-full">
+        <div className="flex flex-row justify-between h-full mx-auto text-white">
+          <IconButton className="sm:hidden" onClick={onClickFilter}>
+            <div className="relative">
+              <FilterIcon className="w-8 h-8" />
+              <div
+                className={classnames(
+                  "absolute w-2 h-2 right-0 bottom-0 rounded-full bg-red-600 animate-pulse",
+                  { hidden: !activeFilters }
+                )}
+              />
+            </div>
+          </IconButton>
+          <a
+            href="/"
+            className="flex flex-row mx-auto sm:mx-0 min-w-0 items-center"
+          >
+            <CollectionIcon className="w-8 h-8 ml-3 hidden sm:inline" />
+            <span className="px-2 text-xl font-mono truncate">
+              Board Game Search
+            </span>
+          </a>
+          <IconButton onClick={onClickAbout}>
+            <InfoIcon className="w-8 h-8" />
+          </IconButton>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const HomePage: React.FC = () => {
   const [filters, setFilters] = useState<SearchFilters | undefined>();
@@ -40,7 +102,8 @@ const HomePage: React.FC = () => {
     (string | number)[] | undefined
   >();
   const [moreResults, setMoreResults] = useState<boolean>(true);
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [filterSidebarOpen, setFilterSidebarOpen] = useState<boolean>(false);
+  const [aboutSidebarOpen, setAboutSidebarOpen] = useState<boolean>(false);
 
   const loadGames = useCallback(
     async (
@@ -92,12 +155,12 @@ const HomePage: React.FC = () => {
 
   // Prevent background content from scrolling when the sidebar is open.
   useEffect(() => {
-    if (sidebarOpen) {
+    if (filterSidebarOpen || aboutSidebarOpen) {
       document.documentElement.style.overflow = "hidden";
     } else {
       document.documentElement.style.overflow = "auto";
     }
-  }, [sidebarOpen]);
+  }, [filterSidebarOpen, aboutSidebarOpen]);
 
   const hasActiveFilters = () => {
     const active = (
@@ -124,25 +187,35 @@ const HomePage: React.FC = () => {
 
   return (
     <>
-      <Sidebar open={sidebarOpen} onSetOpen={setSidebarOpen}>
-        <div className="px-6 bg-gray-100 min-h-screen">
+      <Sidebar open={filterSidebarOpen} onSetOpen={setFilterSidebarOpen}>
+        <div className="px-6 py-4 bg-gray-100 min-h-screen">
           <SearchFiltersMenu
             onChangeFilters={useCallback((filts) => setFilters(filts), [])}
           />
         </div>
       </Sidebar>
-      <div className="lg:container mx-auto my-4 px-4">
-        <ShowFiltersButton
-          onClick={() => setSidebarOpen(true)}
-          showDot={hasActiveFilters()}
-        />
+      <Sidebar
+        open={aboutSidebarOpen}
+        onSetOpen={setAboutSidebarOpen}
+        pullRight={true}
+      >
+        <SiteInfoSidebar />
+      </Sidebar>
+      <Topbar
+        activeFilters={hasActiveFilters()}
+        onClickFilter={() => setFilterSidebarOpen(!filterSidebarOpen)}
+        onClickAbout={() => setAboutSidebarOpen(!aboutSidebarOpen)}
+      />
+      <div className="lg:container mx-auto px-3">
         <div className="flex flex-row">
-          <div className="sticky inset-0 self-start h-screen overflow-y-auto flex-grow-0 flex-shrink-0 w-48 md:w-56 pl-2 pr-4 mr-1 hidden sm:block">
-            <SearchFiltersMenu
-              onChangeFilters={useCallback((filts) => setFilters(filts), [])}
-            />
+          <div className="fixed h-screen w-48 md:w-56 pt-20 pb-4 hidden sm:block">
+            <div className="h-full overflow-y-auto pl-2 pr-4">
+              <SearchFiltersMenu
+                onChangeFilters={useCallback((filts) => setFilters(filts), [])}
+              />
+            </div>
           </div>
-          <div className="flex-grow min-w-0">
+          <div className="flex-grow min-w-0 mt-16 mb-4 ml-0 sm:ml-48 md:ml-56 px-1 pt-4">
             <InfiniteScroll
               pageStart={0}
               initialLoad={false}
@@ -163,7 +236,7 @@ const HomePage: React.FC = () => {
                   })}
                 >
                   <div
-                    className="h-16 w-16 mt-5 mb-2 mx-auto animate-spin ease-linear rounded-full border-4 border-t-4 border-gray-200"
+                    className="h-16 w-16 mt-5 mb-2 mx-auto animate-spin ease-linear rounded-full border-4 border-gray-200"
                     style={{ borderTopColor: "#000" }}
                   ></div>
                 </div>

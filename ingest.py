@@ -349,9 +349,7 @@ def get_game_full_metadata(
                 continue
 
             item_id = int(xml_get(item, None, "id"))
-            weight = float(
-                xml_get(item, "statistics/ratings/averageweight", "value")
-            )
+            weight = float(xml_get(item, "statistics/ratings/averageweight", "value"))
             games.append(
                 Game(
                     id=item_id,

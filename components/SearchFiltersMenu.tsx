@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   useQueryParams,
   BooleanParam,
@@ -87,33 +87,36 @@ const useFiltersQueryParams = (
     /* eslint-enable react-hooks/exhaustive-deps */
   );
 
-  const setParamsWrapper = (filters?: SearchFilters) => {
-    if (!filters) {
-      return setParams({}, "replace");
-    }
+  const setParamsWrapper = useCallback(
+    (filters?: SearchFilters) => {
+      if (!filters) {
+        return setParams({}, "replace");
+      }
 
-    // Create a set of filters that useQueryParams accepts. We remove filters
-    // that are the default value so that they are removed from the query
-    // params instead of just being unset (e.g. "?players=").
-    const newFilters = Object.fromEntries(
-      Object.entries(filters)
-        .map(([key, value]) => {
-          if (key in fallbacks) {
-            const keyCast = key as keyof SearchFilters;
-            if (Array.isArray(value)) {
-              if (value.length === 0) {
+      // Create a set of filters that useQueryParams accepts. We remove filters
+      // that are the default value so that they are removed from the query
+      // params instead of just being unset (e.g. "?players=").
+      const newFilters = Object.fromEntries(
+        Object.entries(filters)
+          .map(([key, value]) => {
+            if (key in fallbacks) {
+              const keyCast = key as keyof SearchFilters;
+              if (Array.isArray(value)) {
+                if (value.length === 0) {
+                  return [key, undefined];
+                }
+              } else if (fallbacks[keyCast] === value) {
                 return [key, undefined];
               }
-            } else if (fallbacks[keyCast] === value) {
-              return [key, undefined];
             }
-          }
-          return [key, value];
-        })
-        .filter(([key, value]) => key !== undefined && value !== undefined)
-    );
-    setParams(newFilters, "replace");
-  };
+            return [key, value];
+          })
+          .filter(([key, value]) => key !== undefined && value !== undefined)
+      );
+      setParams(newFilters, "replace");
+    },
+    [fallbacks, setParams]
+  );
 
   return [state, setParamsWrapper];
 };
@@ -289,9 +292,20 @@ const SearchFiltersMenu: React.FC<{
     }
   }, [init]);
 
-  const resetFilters = () => {
-    setFilters(undefined);
-  };
+  // Batch changes to the filters.keywords field in the keywords state.  This
+  // makes inputs more responsive since your prevent many additional costly
+  // onChangeFilters events (which cause API requests).
+  const [keywords, setKeywords] = useState<string>("");
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      setFilters({ ...filters, keywords });
+    }, 250);
+    return () => clearTimeout(timerId);
+  }, [keywords, filters, setFilters]);
+
+  useEffect(() => {
+    setKeywords(filters.keywords);
+  }, [filters.keywords]);
 
   useEffect(() => {
     if (onChangeFilters && init) {
@@ -308,7 +322,7 @@ const SearchFiltersMenu: React.FC<{
         </div>
         <button
           className="pt-1 text-xs underline hover:opacity-75 focus:outline-none"
-          onClick={resetFilters}
+          onClick={() => setFilters(undefined)}
         >
           Clear all ({countActiveFilters(filters)})
         </button>
@@ -316,15 +330,10 @@ const SearchFiltersMenu: React.FC<{
       <div className="flex flex-col mt-3">
         <div className="flex items-center text-base font-bold">Keywords</div>
         <input
-          value={filters.keywords}
+          value={keywords}
           className="form-input mt-1 text-sm"
           placeholder="Search..."
-          onChange={(e) =>
-            setFilters({
-              ...filters,
-              keywords: e.target.value,
-            })
-          }
+          onChange={(e) => setKeywords(e.target.value)}
         />
       </div>
       <FilterGroup

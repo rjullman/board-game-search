@@ -31,10 +31,10 @@ const InfoIcon: React.FC<{ className: string }> = ({ className }) => (
 );
 
 const Topbar: React.FC<{
-  activeFilters: boolean;
+  numActiveFilters: number;
   onClickFilter: () => void;
   onClickAbout: () => void;
-}> = ({ activeFilters, onClickFilter, onClickAbout }) => {
+}> = ({ numActiveFilters, onClickFilter, onClickAbout }) => {
   const IconButton: React.FC<{ className?: string; onClick: () => void }> = ({
     className = "",
     onClick,
@@ -62,10 +62,17 @@ const Topbar: React.FC<{
               <IconFilter className="w-8 h-8" />
               <div
                 className={classnames(
-                  "absolute w-2 h-2 right-0 bottom-0 rounded-full bg-red-600 animate-pulse",
-                  { hidden: !activeFilters }
+                  "absolute px-1 rounded-full leading-snug font-bold bg-green-600",
+                  { hidden: numActiveFilters === 0 }
                 )}
-              />
+                style={{
+                  bottom: "1px",
+                  right: "-3px",
+                  fontSize: "9px",
+                }}
+              >
+                {numActiveFilters}
+              </div>
             </div>
           </IconButton>
           <a
@@ -88,6 +95,7 @@ const Topbar: React.FC<{
 
 const HomePage: React.FC = () => {
   const [filters, setFilters] = useState<SearchFilters | undefined>();
+  const [numActiveFilters, setNumActiveFilters] = useState<number>(0);
   const [games, setGames] = useState<Game[]>([]);
   const [searchAfterKey, setSearchAfterKey] = useState<
     (string | number)[] | undefined
@@ -153,36 +161,16 @@ const HomePage: React.FC = () => {
     }
   }, [filterSidebarOpen, aboutSidebarOpen]);
 
-  const hasActiveFilters = () => {
-    const active = (
-      filt?: string | string[],
-      defaultValue: string | undefined = undefined
-    ) => {
-      return filt !== undefined && filt.length !== 0 && filt !== defaultValue;
-    };
-    if (!filters) {
-      return false;
-    }
-    return (
-      active(filters.sort, Filters.SortByRelevance) ||
-      active(filters.rating, Filters.RatingAny) ||
-      active(filters.ratingCount, Filters.RatingCountAny) ||
-      active(filters.rank, Filters.RankAny) ||
-      active(filters.age) ||
-      active(filters.keywords) ||
-      active(filters.players) ||
-      active(filters.playtime) ||
-      active(filters.weight)
-    );
-  };
+  const onChangeFilters = useCallback((filts, active) => {
+    setFilters(filts);
+    setNumActiveFilters(active);
+  }, []);
 
   return (
     <>
       <Sidebar open={filterSidebarOpen} onSetOpen={setFilterSidebarOpen}>
         <div className="px-6 py-4 bg-gray-100 min-h-screen">
-          <SearchFiltersMenu
-            onChangeFilters={useCallback((filts) => setFilters(filts), [])}
-          />
+          <SearchFiltersMenu onChangeFilters={onChangeFilters} />
         </div>
       </Sidebar>
       <Sidebar
@@ -193,7 +181,7 @@ const HomePage: React.FC = () => {
         <SiteInfoSidebar />
       </Sidebar>
       <Topbar
-        activeFilters={hasActiveFilters()}
+        numActiveFilters={numActiveFilters}
         onClickFilter={() => setFilterSidebarOpen(!filterSidebarOpen)}
         onClickAbout={() => setAboutSidebarOpen(!aboutSidebarOpen)}
       />
@@ -201,9 +189,7 @@ const HomePage: React.FC = () => {
         <div className="flex flex-row">
           <div className="fixed h-screen w-48 md:w-56 pt-20 pb-4 hidden sm:block">
             <div className="h-full overflow-y-auto pl-2 pr-4">
-              <SearchFiltersMenu
-                onChangeFilters={useCallback((filts) => setFilters(filts), [])}
-              />
+              <SearchFiltersMenu onChangeFilters={onChangeFilters} />
             </div>
           </div>
           <div className="flex-grow min-w-0 mt-16 mb-4 ml-0 sm:ml-48 md:ml-56 px-1 pt-4">

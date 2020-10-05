@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  useQueryParam,
+  useQueryParams,
   BooleanParam,
   StringParam,
   DelimitedArrayParam,
@@ -14,60 +14,131 @@ import HelpTooltip from "./HelpTooltip";
 import IconFilter from "../images/icon-filter.svg";
 
 /**
- *  Wrapper hooks for using useQueryParams.
+ *  Default search filters
  *
- *  These wrappers improve upon withDefault (provided by the "use-query-params"
+ *  Always set array keys to be empty arrays. If you want a default selected
+ *  array, the logic in useFiltersQueryParams will have to update first to do
+ *  deep array equality comparison.
+ **/
+const DEFAULT_SEARCH_FILTERS: SearchFilters = {
+  keywords: "",
+  sort: Filters.SortByRelevance,
+  reverse: false,
+  rank: Filters.RankAny,
+  rating: Filters.RatingAny,
+  ratingCount: Filters.RatingCountAny,
+  weight: [],
+  age: [],
+  playtime: [],
+  players: [],
+};
+
+/**
+ *  Wrapper hook for using useQueryParams.
+ *
+ *  This wrapper improves upon withDefault (provided by the "use-query-params"
  *  package) with better type safety and patterns for SSR.
  **/
+const useFiltersQueryParams = (
+  fallbacks: SearchFilters
+): [SearchFilters, (filters?: SearchFilters) => void] => {
+  const [params, setParams] = useQueryParams({
+    keywords: StringParam,
+    sort: StringParam,
+    reverse: BooleanParam,
+    rank: StringParam,
+    rating: StringParam,
+    ratingCount: StringParam,
+    weight: DelimitedArrayParam,
+    age: DelimitedArrayParam,
+    playtime: DelimitedArrayParam,
+    players: DelimitedArrayParam,
+  });
+  const [state, setState] = useState<SearchFilters>(fallbacks);
+  const removeNulls = (arr: (string | null)[] | null | undefined) => {
+    if (!arr) {
+      return undefined;
+    }
+    return arr
+      .filter((item) => item !== null)
+      .map((item) => (item ? item : ""));
+  };
+  useEffect(
+    () => {
+      setState({
+        keywords: params.keywords || fallbacks.keywords,
+        sort: params.sort || fallbacks.sort,
+        reverse: params.reverse || fallbacks.reverse,
+        rank: params.rank || fallbacks.rank,
+        rating: params.rating || fallbacks.rating,
+        ratingCount: params.ratingCount || fallbacks.ratingCount,
+        weight: removeNulls(params.weight) || fallbacks.weight,
+        age: removeNulls(params.age) || fallbacks.age,
+        playtime: removeNulls(params.playtime) || fallbacks.playtime,
+        players: removeNulls(params.players) || fallbacks.players,
+      });
+    },
+    /* eslint-disable react-hooks/exhaustive-deps */
+    // Compare arrays with deep equality. Calling setState when values have not
+    // changed will cause the onChangeFilters callback to trigger spuriously,
+    // which may cause downstream code to update the filters menu (causing an
+    // infinite loop).
+    [JSON.stringify(params), JSON.stringify(fallbacks)]
+    /* eslint-enable react-hooks/exhaustive-deps */
+  );
 
-const useStringQueryParam = (
-  key: string,
-  fallback: string
-): [
-  string,
-  React.Dispatch<React.SetStateAction<string | null | undefined>>
-] => {
-  const [param, setParam] = useQueryParam(key, StringParam);
-  const [state, setState] = useState<string>(fallback);
-  useEffect(() => {
-    setState(param ? param : fallback);
-  }, [param, fallback]);
-  return [state, setParam];
-};
+  const setParamsWrapper = (filters?: SearchFilters) => {
+    if (!filters) {
+      return setParams({}, "replace");
+    }
 
-const useBooleanQueryParam = (
-  key: string,
-  fallback: boolean
-): [
-  boolean,
-  React.Dispatch<React.SetStateAction<boolean | null | undefined>>
-] => {
-  const [param, setParam] = useQueryParam(key, BooleanParam);
-  const [state, setState] = useState<boolean>(fallback);
-  useEffect(() => {
-    setState(param ? param : fallback);
-  }, [param, fallback]);
-  return [state, setParam];
-};
-
-const useArrayQueryParam = (
-  key: string
-): [
-  string[],
-  React.Dispatch<React.SetStateAction<(string | null)[] | null | undefined>>
-] => {
-  const [param, setParam] = useQueryParam(key, DelimitedArrayParam);
-  const [state, setState] = useState<string[]>([]);
-  useEffect(() => {
-    setState(
-      param
-        ? param
-            .filter((item) => item !== null)
-            .map((item) => (item ? item : ""))
-        : []
+    // Create a set of filters that useQueryParams accepts. We remove filters
+    // that are the default value so that they are removed from the query
+    // params instead of just being unset (e.g. "?players=").
+    const newFilters = Object.fromEntries(
+      Object.entries(filters)
+        .map(([key, value]) => {
+          if (key in fallbacks) {
+            const keyCast = key as keyof SearchFilters;
+            if (Array.isArray(value)) {
+              if (value.length === 0) {
+                return [key, undefined];
+              }
+            } else if (fallbacks[keyCast] === value) {
+              return [key, undefined];
+            }
+          }
+          return [key, value];
+        })
+        .filter(([key, value]) => key !== undefined && value !== undefined)
     );
-  }, [param]);
-  return [state, setParam];
+    setParams(newFilters, "replace");
+  };
+
+  return [state, setParamsWrapper];
+};
+
+const countActiveFilters = (filters: SearchFilters) => {
+  const active = (
+    filt?: string | string[],
+    defaultValue: string | undefined = undefined
+  ): number => {
+    return filt && filt.length && filt !== defaultValue ? 1 : 0;
+  };
+  if (!filters) {
+    return 0;
+  }
+  return (
+    active(filters.sort, Filters.SortByRelevance) +
+    active(filters.rating, Filters.RatingAny) +
+    active(filters.ratingCount, Filters.RatingCountAny) +
+    active(filters.rank, Filters.RankAny) +
+    active(filters.age) +
+    active(filters.keywords) +
+    active(filters.players) +
+    active(filters.playtime) +
+    active(filters.weight)
+  );
 };
 
 const FilterGroup: React.FC<{
@@ -105,7 +176,7 @@ const FilterGroup: React.FC<{
       throw new Error("There must be the same number of options and values.");
     }
     if (type === "radio" || type === "select") {
-      if (selected.length === 0) {
+      if (!selected.length) {
         throw new Error(
           `Inputs of type '${type}' must have at least one selected value.`
         );
@@ -179,7 +250,7 @@ const FilterGroup: React.FC<{
           <select
             className="form-select block mt-1 text-sm"
             onChange={(e) => changeOption(e.target.value)}
-            value={selected.length === 0 ? getValue(0) : selected[0]}
+            value={selected.length ? selected[0] : getValue(0)}
           >
             {options.map((option, i) => (
               <option key={option} value={getValue(i)} disabled={disabled}>
@@ -205,21 +276,9 @@ const FilterGroup: React.FC<{
 };
 
 const SearchFiltersMenu: React.FC<{
-  onChangeFilters?: (filts: SearchFilters) => void;
+  onChangeFilters?: (filts: SearchFilters, numActive: number) => void;
 }> = ({ onChangeFilters }) => {
-  const [keywords, setKeywords] = useStringQueryParam("keywords", "");
-  const [sort, setSort] = useStringQueryParam("sort", Filters.SortByRelevance);
-  const [reverse, setReverse] = useBooleanQueryParam("reverse", false);
-  const [rank, setRank] = useStringQueryParam("rank", Filters.RankAny);
-  const [rating, setRating] = useStringQueryParam("rating", Filters.RatingAny);
-  const [ratingCount, setRatingCount] = useStringQueryParam(
-    "ratingCount",
-    Filters.RatingCountAny
-  );
-  const [weight, setWeight] = useArrayQueryParam("weight");
-  const [age, setAge] = useArrayQueryParam("age");
-  const [playtime, setPlaytime] = useArrayQueryParam("playtime");
-  const [players, setPlayers] = useArrayQueryParam("players");
+  const [filters, setFilters] = useFiltersQueryParams(DEFAULT_SEARCH_FILTERS);
 
   // Track if the initial render is complete in order to avoid calling
   // onChangeFilters twice during the initial load.
@@ -230,49 +289,42 @@ const SearchFiltersMenu: React.FC<{
     }
   }, [init]);
 
+  const resetFilters = () => {
+    setFilters(undefined);
+  };
+
   useEffect(() => {
     if (onChangeFilters && init) {
-      onChangeFilters({
-        keywords,
-        sort,
-        reverse,
-        rank,
-        rating,
-        ratingCount,
-        weight,
-        age,
-        playtime,
-        players,
-      });
+      onChangeFilters(filters, countActiveFilters(filters));
     }
-  }, [
-    keywords,
-    sort,
-    reverse,
-    rank,
-    rating,
-    ratingCount,
-    weight,
-    age,
-    playtime,
-    players,
-    init,
-    onChangeFilters,
-  ]);
+  }, [filters, init, onChangeFilters]);
 
   return (
     <div className="w-100">
-      <div className="flex flex-row items-center">
-        <IconFilter className="w-5 h-5 mr-2" />
-        <div className="text-lg font-bold">Filters</div>
+      <div className="flex flex-row items-center justify-between">
+        <div className="flex flex-row items-center">
+          <IconFilter className="w-5 h-5 mr-2" />
+          <div className="text-lg font-bold">Filters</div>
+        </div>
+        <button
+          className="pt-1 text-xs underline hover:opacity-75 focus:outline-none"
+          onClick={resetFilters}
+        >
+          Clear all ({countActiveFilters(filters)})
+        </button>
       </div>
       <div className="flex flex-col mt-3">
         <div className="flex items-center text-base font-bold">Keywords</div>
         <input
-          value={keywords}
+          value={filters.keywords}
           className="form-input mt-1 text-sm"
           placeholder="Search..."
-          onChange={(e) => setKeywords(e.target.value)}
+          onChange={(e) =>
+            setFilters({
+              ...filters,
+              keywords: e.target.value,
+            })
+          }
         />
       </div>
       <FilterGroup
@@ -285,18 +337,20 @@ const SearchFiltersMenu: React.FC<{
           Filters.SortByRating,
           Filters.SortByWeight,
         ]}
-        selected={[sort]}
-        onChange={(vals) => setSort(vals.length ? vals[0] : undefined)}
+        selected={[filters.sort]}
+        onChange={([sort]) => {
+          setFilters({ ...filters, sort });
+        }}
       />
       <FilterGroup
         type="checkbox"
         options={["Reverse Order"]}
         values={["true"]}
-        selected={[reverse ? "true" : "false"]}
-        disabled={sort === Filters.SortByRelevance}
-        onChange={(vals) =>
-          setReverse(vals.length ? vals[0] === "true" : undefined)
-        }
+        selected={[filters.reverse ? "true" : "false"]}
+        disabled={filters.sort === Filters.SortByRelevance}
+        onChange={([reverse]) => {
+          setFilters({ ...filters, reverse: reverse === "true" });
+        }}
         className="mt-2 text-sm"
       />
       <FilterGroup
@@ -310,8 +364,8 @@ const SearchFiltersMenu: React.FC<{
           Filters.Players4,
           Filters.Players5Plus,
         ]}
-        selected={players}
-        onChange={setPlayers}
+        selected={filters.players}
+        onChange={(players) => setFilters({ ...filters, players })}
       />
       <FilterGroup
         type="checkbox"
@@ -324,8 +378,8 @@ const SearchFiltersMenu: React.FC<{
           Filters.Weight4to5,
         ]}
         tooltip='BoardGameGeek user rating of how difficult the game is to learn and play. Lower rating ("lighter") means easier.'
-        selected={weight}
-        onChange={setWeight}
+        selected={filters.weight}
+        onChange={(weight) => setFilters({ ...filters, weight })}
       />
       <FilterGroup
         type="checkbox"
@@ -338,8 +392,8 @@ const SearchFiltersMenu: React.FC<{
           Filters.Age18To20,
           Filters.Age21Plus,
         ]}
-        selected={age}
-        onChange={setAge}
+        selected={filters.age}
+        onChange={(age) => setFilters({ ...filters, age })}
       />
       <FilterGroup
         type="checkbox"
@@ -351,8 +405,8 @@ const SearchFiltersMenu: React.FC<{
           Filters.Playtime60to120,
           Filters.Playtime120Plus,
         ]}
-        selected={playtime}
-        onChange={setPlaytime}
+        selected={filters.playtime}
+        onChange={(playtime) => setFilters({ ...filters, playtime })}
       />
       <FilterGroup
         type="radio"
@@ -365,8 +419,10 @@ const SearchFiltersMenu: React.FC<{
           Filters.RankTop100,
         ]}
         tooltip="BoardGameGeek ranking of overall game popularity (e.g. rating, number of reviews, discussion online)."
-        selected={[rank]}
-        onChange={(vals) => setRank(vals.length ? vals[0] : undefined)}
+        selected={[filters.rank]}
+        onChange={([rank]) => {
+          setFilters({ ...filters, rank });
+        }}
       />
       <FilterGroup
         type="radio"
@@ -379,8 +435,10 @@ const SearchFiltersMenu: React.FC<{
           Filters.Rating8Plus,
         ]}
         tooltip="BoardGameGeek user rating of game enjoyability and replayability. Highly rated games are not always highly ranked."
-        selected={[rating]}
-        onChange={(vals) => setRating(vals.length ? vals[0] : undefined)}
+        selected={[filters.rating]}
+        onChange={([rating]) => {
+          setFilters({ ...filters, rating });
+        }}
       />
       <FilterGroup
         type="radio"
@@ -393,8 +451,10 @@ const SearchFiltersMenu: React.FC<{
           Filters.RatingCount10000Plus,
         ]}
         tooltip="Number of BoardGameGeek user ratings."
-        selected={[ratingCount]}
-        onChange={(vals) => setRatingCount(vals.length ? vals[0] : undefined)}
+        selected={[filters.ratingCount]}
+        onChange={([ratingCount]) => {
+          setFilters({ ...filters, ratingCount });
+        }}
       />
     </div>
   );

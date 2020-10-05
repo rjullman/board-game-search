@@ -12,23 +12,7 @@ import Sidebar from "../components/Sidebar";
 
 import IconCollection from "../images/icon-collection.svg";
 import IconFilter from "../images/icon-filter.svg";
-
-const InfoIcon: React.FC<{ className: string }> = ({ className }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-);
+import IconInfo from "../images/icon-info-circle.svg";
 
 const Topbar: React.FC<{
   numActiveFilters: number;
@@ -85,7 +69,7 @@ const Topbar: React.FC<{
             </span>
           </a>
           <IconButton onClick={onClickAbout}>
-            <InfoIcon className="w-8 h-8" />
+            <IconInfo className="w-8 h-8" />
           </IconButton>
         </div>
       </div>

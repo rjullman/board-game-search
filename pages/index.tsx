@@ -4,23 +4,14 @@ import classnames from "classnames";
 
 import { search, Game, SearchFilters, Filters } from "../lib/api";
 
-import FilterIcon from "../components/FilterIcon";
 import GameDisplay from "../components/GameDisplay";
 import NoSearchResults from "../components/NoSearchResults";
 import SearchFiltersMenu from "../components/SearchFiltersMenu";
 import SiteInfoSidebar from "../components/SiteInfoSidebar";
 import Sidebar from "../components/Sidebar";
 
-const CollectionIcon: React.FC<{ className: string }> = ({ className }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
-  </svg>
-);
+import IconCollection from "../images/icon-collection.svg";
+import IconFilter from "../images/icon-filter.svg";
 
 const InfoIcon: React.FC<{ className: string }> = ({ className }) => (
   <svg
@@ -68,7 +59,7 @@ const Topbar: React.FC<{
         <div className="flex flex-row justify-between h-full mx-auto text-white">
           <IconButton className="sm:hidden" onClick={onClickFilter}>
             <div className="relative">
-              <FilterIcon className="w-8 h-8" />
+              <IconFilter className="w-8 h-8" />
               <div
                 className={classnames(
                   "absolute w-2 h-2 right-0 bottom-0 rounded-full bg-red-600 animate-pulse",
@@ -81,7 +72,7 @@ const Topbar: React.FC<{
             href="/"
             className="flex flex-row mx-auto sm:mx-0 min-w-0 items-center"
           >
-            <CollectionIcon className="w-8 h-8 ml-3 hidden sm:inline" />
+            <IconCollection className="w-8 h-8 ml-3 hidden sm:inline" />
             <span className="px-2 text-xl font-mono truncate">
               Board Game Search
             </span>

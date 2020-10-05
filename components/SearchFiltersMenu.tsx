@@ -9,8 +9,9 @@ import classnames from "classnames";
 
 import { Filters, SearchFilters } from "../lib/api";
 
-import FilterIcon from "./FilterIcon";
 import HelpTooltip from "./HelpTooltip";
+
+import IconFilter from "../images/icon-filter.svg";
 
 /**
  *  Wrapper hooks for using useQueryParams.
@@ -262,7 +263,7 @@ const SearchFiltersMenu: React.FC<{
   return (
     <div className="w-100">
       <div className="flex flex-row items-center">
-        <FilterIcon className="w-5 h-5 mr-2" />
+        <IconFilter className="w-5 h-5 mr-2" />
         <div className="text-lg font-bold">Filters</div>
       </div>
       <div className="flex flex-col mt-3">

@@ -5,37 +5,8 @@ import { Game } from "../lib/api";
 
 import HelpTooltip from "./HelpTooltip";
 
-const PhotographIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-    />
-  </svg>
-);
-
-const ShoppingBagIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
+import IconPhoto from "../images/icon-photo.svg";
+import IconShoppingBag from "../images/icon-shopping-bag.svg";
 
 const AccordianSection: React.FC<{
   title: string;
@@ -155,7 +126,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
                 className="w-full object-cover object-center md:rounded-br"
               />
             ) : (
-              <PhotographIcon className="w-24 h-24 m-auto text-indigo-800" />
+              <IconPhoto className="w-24 h-24 m-auto text-indigo-800" />
             )}
           </div>
         </div>
@@ -174,7 +145,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
                 )}
               >
                 <a className="inline-flex items-center min-w-0" href={buyLink}>
-                  <ShoppingBagIcon className="fill-current w-3 h-3 mr-1" />
+                  <IconShoppingBag className="fill-current w-3 h-3 mr-1" />
                   <div>
                     Buy <span className="hidden sm:inline">a Copy</span>
                   </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import classnames from "classnames";
 
-import { search, Game, SearchFilters, Filters } from "../lib/api";
+import { search, Game, SearchFilters } from "../lib/api";
 
 import GameDisplay from "../components/GameDisplay";
 import NoSearchResults from "../components/NoSearchResults";

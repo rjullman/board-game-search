@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import Head from "next/head";
 import InfiniteScroll from "react-infinite-scroller";
 import classnames from "classnames";
 
@@ -10,9 +11,63 @@ import SearchFiltersMenu from "../components/SearchFiltersMenu";
 import SiteInfoSidebar from "../components/SiteInfoSidebar";
 import Sidebar from "../components/Sidebar";
 
-import IconCollection from "../images/icon-collection.svg";
+import IconDice from "../images/dice.svg";
 import IconFilter from "../images/icon-filter.svg";
 import IconInfo from "../images/icon-info-circle.svg";
+
+const HeadMetadata: React.FC = () => {
+  if (!process.env.NEXT_PUBLIC_CANONICAL_URL) {
+    throw new Error(
+      "NEXT_PUBLIC_CANONICAL_URL environment variable must be defined."
+    );
+  }
+  const url = process.env.NEXT_PUBLIC_CANONICAL_URL.replace(/\/+$/, "");
+  return (
+    <Head>
+      <title>Board Game Search</title>
+      <meta charSet="utf-8" />
+      <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+      <meta name="robots" content="index, follow" />
+      <meta
+        name="description"
+        content="Easily search for and discover your next favorite board game! Our board game database is updated daily with the top 10,000 games."
+      />
+
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content="Board Game Search" />
+      <meta
+        property="og:description"
+        content="Easily search for and discover your next favorite board game!"
+      />
+      <meta property="og:image" content={`${url}/logo.jpg`} />
+      <meta property="og:url" content={url} />
+
+      <link
+        rel="apple-touch-icon"
+        sizes="180x180"
+        href="/apple-touch-icon.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="32x32"
+        href="/favicon-32x32.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="16x16"
+        href="/favicon-16x16.png"
+      />
+      <link rel="manifest" href="/site.webmanifest" />
+      <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#3c366b" />
+      <meta name="apple-mobile-web-app-title" content="Board Game Search" />
+      <meta name="application-name" content="Board Game Search" />
+      <meta name="msapplication-TileColor" content="#9f00a7" />
+      <meta name="theme-color" content="#3c366b" />
+    </Head>
+  );
+};
 
 const Topbar: React.FC<{
   numActiveFilters: number;
@@ -63,7 +118,7 @@ const Topbar: React.FC<{
             href="/"
             className="flex flex-row mx-auto sm:mx-0 min-w-0 items-center"
           >
-            <IconCollection className="w-8 h-8 ml-3 hidden sm:inline" />
+            <IconDice className="w-10 h-10 ml-3 hidden sm:inline" />
             <span className="px-2 text-xl font-mono truncate">
               Board Game Search
             </span>
@@ -152,6 +207,7 @@ const HomePage: React.FC = () => {
 
   return (
     <>
+      <HeadMetadata />
       <Sidebar open={filterSidebarOpen} onSetOpen={setFilterSidebarOpen}>
         <div className="px-6 py-4 bg-gray-100 min-h-screen">
           <SearchFiltersMenu onChangeFilters={onChangeFilters} />

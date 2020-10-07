@@ -43,6 +43,8 @@ ES_INDEX_NAME = "boardgames"
 
 ES_MAX_SEARCH_WINDOW = 10000
 
+ES_NESTED_OBJECT_PROPS = ["mechanics", "categories"]
+
 
 class GameBasicMetadata(NamedTuple):
     """
@@ -479,6 +481,29 @@ def run_ingest(
         if drop_index:
             print("Dropping old Elasticsearch index...")
             es.indices.delete(index=ES_INDEX_NAME, ignore=[400, 404])
+
+        # Create an index template to index nested objects (instead of flattened ones).
+        for prop in ES_NESTED_OBJECT_PROPS:
+            es.cluster.put_component_template(
+                name=prop,
+                body={
+                    "template": {
+                        "mappings": {
+                            "properties": {
+                                prop: {
+                                    "type": "nested"
+                                }
+                            }
+                        }
+                    }
+                })
+        es.indices.put_index_template(
+            name="boardgames-template",
+            body={
+                "index_patterns": [ES_INDEX_NAME],
+                "composed_of": ES_NESTED_OBJECT_PROPS,
+            })
+
         es.indices.create(index=ES_INDEX_NAME, ignore=400)
 
     def games_to_delete() -> Iterator[Tuple[str, str]]:
@@ -525,8 +550,9 @@ def run_ingest(
             )
 
             doc = game._asdict()
-            for key in ["categories", "families", "mechanics", "expansions"]:
-                doc[key] = [link._asdict() for link in doc[key]]
+            for key in doc:
+                if isinstance(doc[key], list):
+                    doc[key] = [link._asdict() for link in doc[key]]
 
             yield {
                 "_op_type": "index",

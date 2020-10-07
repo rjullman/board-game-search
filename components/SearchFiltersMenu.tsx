@@ -1,17 +1,21 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   useQueryParams,
   BooleanParam,
   StringParam,
   DelimitedArrayParam,
+  DelimitedNumericArrayParam,
 } from "use-query-params";
 import classnames from "classnames";
+import Select from "react-select";
 
-import { Filters, SearchFilters } from "../lib/api";
+import { Filters, SearchFilters, Tag, Tags } from "../lib/api";
 
 import HelpTooltip from "./HelpTooltip";
 
 import IconFilter from "../images/icon-filter.svg";
+
+import styles from "./SearchFiltersMenu.module.css";
 
 /**
  *  Default search filters
@@ -31,6 +35,8 @@ const DEFAULT_SEARCH_FILTERS: SearchFilters = {
   age: [],
   playtime: [],
   players: [],
+  mechanics: [],
+  themes: [],
 };
 
 /**
@@ -53,6 +59,8 @@ const useFiltersQueryParams = (
     age: DelimitedArrayParam,
     playtime: DelimitedArrayParam,
     players: DelimitedArrayParam,
+    mechanics: DelimitedNumericArrayParam,
+    themes: DelimitedNumericArrayParam,
   });
   const [state, setState] = useState<SearchFilters>(fallbacks);
   const removeNulls = (arr: (string | null)[] | null | undefined) => {
@@ -62,6 +70,14 @@ const useFiltersQueryParams = (
     return arr
       .filter((item) => item !== null)
       .map((item) => (item ? item : ""));
+  };
+  const removeNumberNulls = (arr: (number | null)[] | null | undefined) => {
+    if (!arr) {
+      return undefined;
+    }
+    return arr
+      .filter((item) => item !== null)
+      .map((item) => (item ? item : -1));
   };
   useEffect(
     () => {
@@ -76,6 +92,8 @@ const useFiltersQueryParams = (
         age: removeNulls(params.age) || fallbacks.age,
         playtime: removeNulls(params.playtime) || fallbacks.playtime,
         players: removeNulls(params.players) || fallbacks.players,
+        mechanics: removeNumberNulls(params.mechanics) || fallbacks.mechanics,
+        themes: removeNumberNulls(params.themes) || fallbacks.themes,
       });
     },
     /* eslint-disable react-hooks/exhaustive-deps */
@@ -140,31 +158,33 @@ const countActiveFilters = (filters: SearchFilters) => {
     active(filters.keywords) +
     active(filters.players) +
     active(filters.playtime) +
-    active(filters.weight)
+    active(filters.weight) +
+    filters.mechanics.length +
+    filters.themes.length
   );
 };
 
+const FilterSection: React.FC<{
+  label: string;
+  tooltip?: string;
+  className?: string;
+}> = ({ label, tooltip, className = "mt-3", children }) => (
+  <div className={classnames("flex flex-col mt-3", className)}>
+    <div className="flex items-center text-base font-bold">
+      {label} {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
+    </div>
+    {children}
+  </div>
+);
+
 const FilterGroup: React.FC<{
   type: "checkbox" | "radio" | "select";
-  label?: string;
   options: string[];
   values?: string[];
   selected?: string[];
   disabled?: boolean;
-  tooltip?: string;
   onChange?: (vals: string[]) => void;
-  className?: string;
-}> = ({
-  type,
-  label = "",
-  options,
-  values,
-  selected = [],
-  disabled = false,
-  tooltip,
-  onChange,
-  className = "mt-3",
-}) => {
+}> = ({ type, options, values, selected = [], disabled = false, onChange }) => {
   // Prefix forms groups with a UUID to allow multiple groups with the same
   // "label" on a page. This can be useful if you need to render multiple copies
   // of the same filter group depending on screen size.
@@ -239,7 +259,7 @@ const FilterGroup: React.FC<{
             <input
               type={type}
               className={formClassname()}
-              name={`${uid}-${label}`}
+              name={uid}
               value={getValue(i)}
               checked={selected.includes(getValue(i))}
               disabled={disabled}
@@ -268,19 +288,70 @@ const FilterGroup: React.FC<{
     }
   };
 
+  return <div className="flex flex-col">{form()}</div>;
+};
+
+const FilterByTags: React.FC<{
+  options: Tag[] | undefined;
+  selected: number[];
+  instanceId: string;
+  onChange: (ids: number[]) => void;
+}> = ({ options, selected, instanceId, onChange }) => {
+  const tags = useMemo(() => {
+    if (!options) {
+      return undefined;
+    }
+    return Object.fromEntries(options.map((tag) => [tag.id, tag.name]));
+  }, [options]);
+
+  const selectedVals = useMemo(() => {
+    if (!tags) {
+      return undefined;
+    }
+    return selected
+      .filter((id) => id in tags)
+      .map((id) => ({ value: id, label: tags[id] }));
+  }, [tags, selected]);
+
+  const sortedOptions = useMemo(() => {
+    if (!options) {
+      return undefined;
+    }
+    return options.sort((a, b) => a.name.localeCompare(b.name));
+  }, [options]);
+
   return (
-    <div className={`flex flex-col ${className}`}>
-      <div className="flex items-center text-base font-bold">
-        {label} {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
-      </div>
-      {form()}
-    </div>
+    <Select
+      className={classnames("react-select mt-1 text-sm", styles.react_select)}
+      classNamePrefix="react-select"
+      isMulti
+      isSearchable
+      isClearable={false}
+      hideSelectedOptions={false}
+      isLoading={options === undefined}
+      onChange={(values) => {
+        if (Array.isArray(values)) {
+          onChange(values.map((val: { value: number }) => val.value));
+        } else {
+          onChange([]);
+        }
+      }}
+      options={
+        sortedOptions
+          ? sortedOptions.map((opt) => ({ value: opt.id, label: opt.name }))
+          : undefined
+      }
+      value={selectedVals}
+      instanceId={instanceId}
+    />
   );
 };
 
 const SearchFiltersMenu: React.FC<{
+  tags: Tags | undefined;
+  instanceId: string;
   onChangeFilters?: (filts: SearchFilters, numActive: number) => void;
-}> = ({ onChangeFilters }) => {
+}> = ({ tags, instanceId, onChangeFilters }) => {
   const [filters, setFilters] = useFiltersQueryParams(DEFAULT_SEARCH_FILTERS);
 
   // Track if the initial render is complete in order to avoid calling
@@ -327,144 +398,182 @@ const SearchFiltersMenu: React.FC<{
           Clear all ({countActiveFilters(filters)})
         </button>
       </div>
-      <div className="flex flex-col mt-3">
-        <div className="flex items-center text-base font-bold">Keywords</div>
+      <FilterSection label="Keywords">
         <input
           value={keywords}
           className="form-input mt-1 text-sm"
           placeholder="Search..."
           onChange={(e) => setKeywords(e.target.value)}
         />
-      </div>
-      <FilterGroup
-        type="select"
-        label="Sort By"
-        options={["Relevance", "Rank", "Rating", "Weight"]}
-        values={[
-          Filters.SortByRelevance,
-          Filters.SortByRank,
-          Filters.SortByRating,
-          Filters.SortByWeight,
-        ]}
-        selected={[filters.sort]}
-        onChange={([sort]) => {
-          setFilters({ ...filters, sort });
-        }}
-      />
-      <FilterGroup
-        type="checkbox"
-        options={["Reverse Order"]}
-        values={["true"]}
-        selected={[filters.reverse ? "true" : "false"]}
-        disabled={filters.sort === Filters.SortByRelevance}
-        onChange={([reverse]) => {
-          setFilters({ ...filters, reverse: reverse === "true" });
-        }}
-        className="mt-2 text-sm"
-      />
-      <FilterGroup
-        type="checkbox"
-        label="Players"
-        options={["1 Player", "2 Player", "3 Player", "4 Player", "5+ Player"]}
-        values={[
-          Filters.Players1,
-          Filters.Players2,
-          Filters.Players3,
-          Filters.Players4,
-          Filters.Players5Plus,
-        ]}
-        selected={filters.players}
-        onChange={(players) => setFilters({ ...filters, players })}
-      />
-      <FilterGroup
-        type="checkbox"
+      </FilterSection>
+      <FilterSection label="Sort By">
+        <FilterGroup
+          type="select"
+          options={["Relevance", "Rank", "Rating", "Weight"]}
+          values={[
+            Filters.SortByRelevance,
+            Filters.SortByRank,
+            Filters.SortByRating,
+            Filters.SortByWeight,
+          ]}
+          selected={[filters.sort]}
+          onChange={([sort]) => {
+            setFilters({ ...filters, sort });
+          }}
+        />
+        <div className="mt-2 text-sm">
+          <FilterGroup
+            type="checkbox"
+            options={["Reverse Order"]}
+            values={["true"]}
+            selected={[filters.reverse ? "true" : "false"]}
+            disabled={filters.sort === Filters.SortByRelevance}
+            onChange={([reverse]) => {
+              setFilters({ ...filters, reverse: reverse === "true" });
+            }}
+          />
+        </div>
+      </FilterSection>
+      <FilterSection label="Mechanics">
+        <FilterByTags
+          options={tags && tags.mechanics}
+          selected={filters.mechanics}
+          instanceId={`mechanics-select-${instanceId}`}
+          onChange={(mechanics) => setFilters({ ...filters, mechanics })}
+        />
+      </FilterSection>
+      <FilterSection label="Themes">
+        <FilterByTags
+          options={tags && tags.themes}
+          selected={filters.themes}
+          instanceId={`themes-select-${instanceId}`}
+          onChange={(themes) => setFilters({ ...filters, themes })}
+        />
+      </FilterSection>
+      <FilterSection label="Players">
+        <FilterGroup
+          type="checkbox"
+          options={[
+            "1 Player",
+            "2 Player",
+            "3 Player",
+            "4 Player",
+            "5+ Player",
+          ]}
+          values={[
+            Filters.Players1,
+            Filters.Players2,
+            Filters.Players3,
+            Filters.Players4,
+            Filters.Players5Plus,
+          ]}
+          selected={filters.players}
+          onChange={(players) => setFilters({ ...filters, players })}
+        />
+      </FilterSection>
+      <FilterSection
         label="Weight"
-        options={["1.0–2.0", "2.0–3.0", "3.0–4.0", "4.0–5.0"]}
-        values={[
-          Filters.Weight1to2,
-          Filters.Weight2to3,
-          Filters.Weight3to4,
-          Filters.Weight4to5,
-        ]}
         tooltip='BoardGameGeek user rating of how difficult the game is to learn and play. Lower rating ("lighter") means easier.'
-        selected={filters.weight}
-        onChange={(weight) => setFilters({ ...filters, weight })}
-      />
-      <FilterGroup
-        type="checkbox"
-        label="Age"
-        options={["0–4", "5–10", "11–17", "18–20", "21+"]}
-        values={[
-          Filters.Age0To4,
-          Filters.Age5To10,
-          Filters.Age11To17,
-          Filters.Age18To20,
-          Filters.Age21Plus,
-        ]}
-        selected={filters.age}
-        onChange={(age) => setFilters({ ...filters, age })}
-      />
-      <FilterGroup
-        type="checkbox"
-        label="Playtime"
-        options={["0–30 mins", "30–60 mins", "60–120 mins", "120+ mins"]}
-        values={[
-          Filters.Playtime0to30,
-          Filters.Playtime30to60,
-          Filters.Playtime60to120,
-          Filters.Playtime120Plus,
-        ]}
-        selected={filters.playtime}
-        onChange={(playtime) => setFilters({ ...filters, playtime })}
-      />
-      <FilterGroup
-        type="radio"
+      >
+        <FilterGroup
+          type="checkbox"
+          options={["1.0–2.0", "2.0–3.0", "3.0–4.0", "4.0–5.0"]}
+          values={[
+            Filters.Weight1to2,
+            Filters.Weight2to3,
+            Filters.Weight3to4,
+            Filters.Weight4to5,
+          ]}
+          selected={filters.weight}
+          onChange={(weight) => setFilters({ ...filters, weight })}
+        />
+      </FilterSection>
+      <FilterSection label="Age">
+        <FilterGroup
+          type="checkbox"
+          options={["0–4", "5–10", "11–17", "18–20", "21+"]}
+          values={[
+            Filters.Age0To4,
+            Filters.Age5To10,
+            Filters.Age11To17,
+            Filters.Age18To20,
+            Filters.Age21Plus,
+          ]}
+          selected={filters.age}
+          onChange={(age) => setFilters({ ...filters, age })}
+        />
+      </FilterSection>
+      <FilterSection label="Playtime">
+        <FilterGroup
+          type="checkbox"
+          options={["0–30 mins", "30–60 mins", "60–120 mins", "120+ mins"]}
+          values={[
+            Filters.Playtime0to30,
+            Filters.Playtime30to60,
+            Filters.Playtime60to120,
+            Filters.Playtime120Plus,
+          ]}
+          selected={filters.playtime}
+          onChange={(playtime) => setFilters({ ...filters, playtime })}
+        />
+      </FilterSection>
+      <FilterSection
         label="Rank"
-        options={["any", "top 2500", "top 500", "top 100"]}
-        values={[
-          Filters.RankAny,
-          Filters.RankTop2500,
-          Filters.RankTop500,
-          Filters.RankTop100,
-        ]}
         tooltip="BoardGameGeek ranking of overall game popularity (e.g. rating, number of reviews, discussion online)."
-        selected={[filters.rank]}
-        onChange={([rank]) => {
-          setFilters({ ...filters, rank });
-        }}
-      />
-      <FilterGroup
-        type="radio"
+      >
+        <FilterGroup
+          type="radio"
+          options={["any", "top 2500", "top 500", "top 100"]}
+          values={[
+            Filters.RankAny,
+            Filters.RankTop2500,
+            Filters.RankTop500,
+            Filters.RankTop100,
+          ]}
+          selected={[filters.rank]}
+          onChange={([rank]) => {
+            setFilters({ ...filters, rank });
+          }}
+        />
+      </FilterSection>
+      <FilterSection
         label="Rating"
-        options={["any", "2+", "5+", "8+"]}
-        values={[
-          Filters.RatingAny,
-          Filters.Rating2Plus,
-          Filters.Rating5Plus,
-          Filters.Rating8Plus,
-        ]}
         tooltip="BoardGameGeek user rating of game enjoyability and replayability. Highly rated games are not always highly ranked."
-        selected={[filters.rating]}
-        onChange={([rating]) => {
-          setFilters({ ...filters, rating });
-        }}
-      />
-      <FilterGroup
-        type="radio"
+      >
+        <FilterGroup
+          type="radio"
+          options={["any", "2+", "5+", "8+"]}
+          values={[
+            Filters.RatingAny,
+            Filters.Rating2Plus,
+            Filters.Rating5Plus,
+            Filters.Rating8Plus,
+          ]}
+          selected={[filters.rating]}
+          onChange={([rating]) => {
+            setFilters({ ...filters, rating });
+          }}
+        />
+      </FilterSection>
+      <FilterSection
         label="Rating Count"
-        options={["any", "100+", "1k+", "10k+"]}
-        values={[
-          Filters.RatingCountAny,
-          Filters.RatingCount100Plus,
-          Filters.RatingCount1000Plus,
-          Filters.RatingCount10000Plus,
-        ]}
         tooltip="Number of BoardGameGeek user ratings."
-        selected={[filters.ratingCount]}
-        onChange={([ratingCount]) => {
-          setFilters({ ...filters, ratingCount });
-        }}
-      />
+      >
+        <FilterGroup
+          type="radio"
+          options={["any", "100+", "1k+", "10k+"]}
+          values={[
+            Filters.RatingCountAny,
+            Filters.RatingCount100Plus,
+            Filters.RatingCount1000Plus,
+            Filters.RatingCount10000Plus,
+          ]}
+          selected={[filters.ratingCount]}
+          onChange={([ratingCount]) => {
+            setFilters({ ...filters, ratingCount });
+          }}
+        />
+      </FilterSection>
     </div>
   );
 };

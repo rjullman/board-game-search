@@ -166,6 +166,36 @@ function createSearchAfterClause(params?: string | string[]) {
   );
 }
 
+const createTagMatchClause = (
+  path: "mechanics" | "categories",
+  params?: string | string[]
+) => {
+  if (!params) {
+    return [];
+  }
+  const ids = (typeof params === "string" ? [params] : params)
+    .filter(
+      (item) =>
+        !isNaN(Number(item)) && Number.isInteger(Number.parseFloat(item))
+    )
+    .map((item) => Number.parseInt(item));
+
+  if (!ids.length) {
+    return [];
+  }
+
+  return ids.map((id) => ({
+    nested: {
+      path,
+      query: {
+        bool: {
+          should: [{ match: { [`${path}.id`]: id } }],
+        },
+      },
+    },
+  }));
+};
+
 export default async (
   req: NextApiRequest,
   res: NextApiResponse
@@ -187,6 +217,11 @@ export default async (
       ].filter((clause) => clause !== undefined),
       query: {
         bool: {
+          must: [
+            ...createTagMatchClause("mechanics", req.query["mechanics"]),
+            ...createTagMatchClause("categories", req.query["themes"]),
+          ],
+          should: [...createSearchKeywordsClause(req.query["keywords"])],
           filter: [
             createFilterClause(AGE_RANGES, req.query["age"]),
             createFilterClause(RANK_RANGES, req.query["rank"]),
@@ -196,7 +231,6 @@ export default async (
             createFilterClause(PLAYTIME_RANGES, req.query["playtime"]),
             createFilterClause(PLAYERS_RANGES, req.query["players"]),
           ].filter((filt) => filt != undefined),
-          should: [...createSearchKeywordsClause(req.query["keywords"])],
         },
       },
     },

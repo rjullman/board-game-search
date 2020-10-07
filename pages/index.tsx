@@ -3,7 +3,7 @@ import Head from "next/head";
 import InfiniteScroll from "react-infinite-scroller";
 import classnames from "classnames";
 
-import { search, Game, SearchFilters } from "../lib/api";
+import { search, loadTags, Game, Tags, SearchFilters } from "../lib/api";
 
 import GameDisplay from "../components/GameDisplay";
 import NoSearchResults from "../components/NoSearchResults";
@@ -143,6 +143,15 @@ const HomePage: React.FC = () => {
   const [filterSidebarOpen, setFilterSidebarOpen] = useState<boolean>(false);
   const [aboutSidebarOpen, setAboutSidebarOpen] = useState<boolean>(false);
 
+  const [tags, setTags] = useState<Tags | undefined>();
+  useEffect(() => {
+    const load = async () => {
+      const result = await loadTags();
+      setTags(result);
+    };
+    load();
+  }, []);
+
   const loadGames = useCallback(
     async (
       filters: SearchFilters,
@@ -209,8 +218,12 @@ const HomePage: React.FC = () => {
     <>
       <HeadMetadata />
       <Sidebar open={filterSidebarOpen} onSetOpen={setFilterSidebarOpen}>
-        <div className="px-6 py-4 bg-gray-100 min-h-screen">
-          <SearchFiltersMenu onChangeFilters={onChangeFilters} />
+        <div className="w-64 min-h-screen px-6 py-4 bg-gray-100">
+          <SearchFiltersMenu
+            tags={tags}
+            instanceId="drawer"
+            onChangeFilters={onChangeFilters}
+          />
         </div>
       </Sidebar>
       <Sidebar
@@ -227,12 +240,16 @@ const HomePage: React.FC = () => {
       />
       <div className="lg:container mx-auto px-3">
         <div className="flex flex-row">
-          <div className="fixed h-screen w-48 md:w-56 pt-20 pb-4 hidden sm:block">
+          <div className="fixed h-screen w-56 md:w-64 pt-20 pb-4 hidden sm:block">
             <div className="h-full overflow-y-auto pl-2 pr-4">
-              <SearchFiltersMenu onChangeFilters={onChangeFilters} />
+              <SearchFiltersMenu
+                tags={tags}
+                instanceId="docked"
+                onChangeFilters={onChangeFilters}
+              />
             </div>
           </div>
-          <div className="flex-grow min-w-0 mt-16 mb-4 ml-0 sm:ml-48 md:ml-56 px-1 pt-4">
+          <div className="flex-grow min-w-0 mt-16 mb-4 ml-0 sm:ml-56 md:ml-64 px-1 pt-4">
             <InfiniteScroll
               pageStart={0}
               initialLoad={false}

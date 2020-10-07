@@ -19,6 +19,11 @@ class SearchResult(TypedDict):
     hits: SearchResultHits
 
 
+class Cluster:
+    def put_component_template(self, *, name: str, body: Dict[str, Any]) -> None:
+        ...
+
+
 class Indices:
     def refresh(self, index: str) -> None:
         ...
@@ -29,8 +34,12 @@ class Indices:
     def delete(self, *, index: str, ignore: Union[int, List[int]]) -> None:
         ...
 
+    def put_index_template(self, *, name: str, body: Dict[str, Any]) -> None:
+        ...
+
 
 class Elasticsearch:
+    cluster: Cluster
     indices: Indices
 
     def __init__(self, conn: str) -> None:

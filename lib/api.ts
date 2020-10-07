@@ -3,6 +3,7 @@ import {
   BooleanParam,
   StringParam,
   ArrayParam,
+  NumericArrayParam,
 } from "serialize-query-params";
 import { stringify } from "query-string";
 
@@ -100,6 +101,8 @@ export type SearchFilters = {
   age: string[];
   playtime: string[];
   players: string[];
+  mechanics: number[];
+  themes: number[];
 };
 
 export async function search(
@@ -118,6 +121,8 @@ export async function search(
       weight: ArrayParam,
       playtime: ArrayParam,
       players: ArrayParam,
+      mechanics: NumericArrayParam,
+      themes: NumericArrayParam,
       searchAfterKey: ArrayParam,
     },
     {
@@ -129,5 +134,21 @@ export async function search(
   );
   const response = await fetch(`/api/search?${stringify(encodedQuery)}`);
   const results = (await response.json()) as Results;
+  return results;
+}
+
+export type Tag = {
+  id: number;
+  name: string;
+};
+
+export type Tags = {
+  mechanics: Tag[];
+  themes: Tag[];
+};
+
+export async function loadTags(): Promise<Tags> {
+  const response = await fetch("/api/tags");
+  const results = (await response.json()) as Tags;
   return results;
 }

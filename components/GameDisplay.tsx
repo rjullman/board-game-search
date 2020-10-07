@@ -18,10 +18,16 @@ const AccordianSection: React.FC<{
   const [expanded, setExpanded] = useState<boolean>(false);
 
   useEffect(() => {
-    if (tagContainer) {
+    if (!tagContainer) {
+      return;
+    }
+    const updateHeight = () => {
       setScrollHeight(tagContainer.scrollHeight);
       setOverflows(tagContainer.scrollHeight > tagContainer.clientHeight);
-    }
+    };
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
   }, [tagContainer]);
 
   const toggleAccordian = () => {

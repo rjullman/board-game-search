@@ -34,6 +34,9 @@ class Indices:
     def delete(self, *, index: str, ignore: Union[int, List[int]]) -> None:
         ...
 
+    def put_template(self, *, name: str, body: Dict[str, Any]) -> None:
+        ...
+
     def put_index_template(self, *, name: str, body: Dict[str, Any]) -> None:
         ...
 

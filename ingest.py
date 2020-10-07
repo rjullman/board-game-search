@@ -483,27 +483,17 @@ def run_ingest(
             es.indices.delete(index=ES_INDEX_NAME, ignore=[400, 404])
 
         # Create an index template to index nested objects (instead of flattened ones).
-        for prop in ES_NESTED_OBJECT_PROPS:
-            es.cluster.put_component_template(
-                name=prop,
-                body={
-                    "template": {
-                        "mappings": {
-                            "properties": {
-                                prop: {
-                                    "type": "nested"
-                                }
-                            }
-                        }
-                    }
-                })
-        es.indices.put_index_template(
+        es.indices.put_template(
             name="boardgames-template",
             body={
                 "index_patterns": [ES_INDEX_NAME],
-                "composed_of": ES_NESTED_OBJECT_PROPS,
-            })
-
+                "mappings": {
+                    "properties": {
+                        prop: {"type": "nested"} for prop in ES_NESTED_OBJECT_PROPS
+                    }
+                },
+            },
+        )
         es.indices.create(index=ES_INDEX_NAME, ignore=400)
 
     def games_to_delete() -> Iterator[Tuple[str, str]]:

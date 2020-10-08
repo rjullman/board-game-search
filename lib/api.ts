@@ -6,6 +6,7 @@ import {
   NumericArrayParam,
 } from "serialize-query-params";
 import { stringify } from "query-string";
+import fetch from "isomorphic-unfetch";
 
 type EntityLink = {
   id: number;

@@ -212,11 +212,11 @@ export default async (
       ].filter((clause) => clause !== undefined),
       query: {
         bool: {
-          must: [
+          should: [
+            ...createSearchKeywordsClause(req.query["keywords"]),
             ...createTagMatchClause("mechanics", req.query["mechanics"]),
             ...createTagMatchClause("categories", req.query["themes"]),
           ],
-          should: [...createSearchKeywordsClause(req.query["keywords"])],
           filter: [
             createFilterClause(AGE_RANGES, req.query["age"]),
             createFilterClause(RANK_RANGES, req.query["rank"]),

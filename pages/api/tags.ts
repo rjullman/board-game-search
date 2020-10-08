@@ -3,80 +3,52 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Tag, Tags } from "../../lib/api";
 import db from "../../lib/db";
 
-enum TagType {
-  Mechanics = "mechanics",
-  Themes = "themes",
-}
+type TagWithType = Tag & { type: string };
 
-const loadPage = async (
-  type: TagType,
-  afterKey?: unknown
-): Promise<{
-  after_key: unknown;
-  buckets: { key: Tag }[];
-}> => {
-  const path = () => {
-    switch (type) {
-      case TagType.Mechanics:
-        return "mechanics";
-      case TagType.Themes:
-        return "categories";
-      default:
-        throw new Error(`Unknown tag type '${type}'.`);
-    }
-  };
+type Result = {
+  sort: unknown;
+  _source: TagWithType;
+};
+
+const loadPage = async (search_after?: unknown): Promise<Result[]> => {
   const { body: results } = await db.search({
-    index: "boardgames",
+    index: "tags",
     body: {
-      size: 0,
-      track_total_hits: false,
-      aggs: {
-        tag: {
-          nested: {
-            path: path(),
-          },
-          aggs: {
-            tag_distinct: {
-              composite: {
-                size: 10,
-                sources: [
-                  { id: { terms: { field: `${path()}.id` } } },
-                  {
-                    name: {
-                      terms: { field: `${path()}.name.keyword` },
-                    },
-                  },
-                ],
-                after: afterKey,
-              },
-            },
-          },
-        },
+      size: 10,
+      search_after,
+      sort: ["id"],
+      query: {
+        match_all: {},
       },
     },
   });
-  return results.aggregations.tag.tag_distinct;
+  return results.hits.hits;
 };
 
-const loadTags = async (type: TagType): Promise<Tag[]> => {
+const loadTags = async (): Promise<TagWithType[]> => {
   const tags = [];
-  let results = await loadPage(type);
-  while (results.buckets.length) {
-    tags.push(...results.buckets.map((item) => item.key));
-    results = await loadPage(type, results.after_key);
+  let results = await loadPage();
+  while (results.length) {
+    tags.push(...results.map((item) => item._source));
+    results = await loadPage(results[results.length - 1].sort);
   }
   return tags;
+};
+
+const filterByType = (tags: TagWithType[], type: string): Tag[] => {
+  return tags
+    .filter((tag) => tag.type === type)
+    .map((tag) => ({ id: tag.id, name: tag.name }));
 };
 
 export default async (
   _req: NextApiRequest,
   res: NextApiResponse
 ): Promise<void> => {
-  const mechanics = await loadTags(TagType.Mechanics);
-  const themes = await loadTags(TagType.Themes);
+  const tags = await loadTags();
   const body: Tags = {
-    mechanics,
-    themes,
+    mechanics: filterByType(tags, "mechanic"),
+    themes: filterByType(tags, "category"),
   };
   res.setHeader("cache-control", "s-maxage=86400, stale-while-revalidate"); // cache for a day
   return res.status(200).json(body);

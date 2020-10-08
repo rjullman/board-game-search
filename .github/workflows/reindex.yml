@@ -44,7 +44,7 @@ jobs:
           . env/bin/activate
           python ingest.py run \
             --connection-from-env \
-            --max-rank 10000 \
+            --max-rank 9700 \
             ${{ github.event.inputs.options }}
 
       # Redeploy to bust Vercel cache.

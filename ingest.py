@@ -17,6 +17,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Tuple,
@@ -39,11 +40,10 @@ BGG_THING_API_URL = "https://boardgamegeek.com/xmlapi2/thing?stats=1&id={ids}"
 
 API_BATCH_SIZE = 1000
 
-ES_INDEX_NAME = "boardgames"
+ES_GAME_INDEX_NAME = "boardgames"
+ES_TAG_INDEX_NAME = "tags"
 
 ES_MAX_SEARCH_WINDOW = 10000
-
-ES_NESTED_OBJECT_PROPS = ["mechanics", "categories"]
 
 
 class GameBasicMetadata(NamedTuple):
@@ -93,6 +93,24 @@ class Game(NamedTuple):
     mechanics: List[EntityLink]
     families: List[EntityLink]
     expansions: List[EntityLink]
+
+
+TagType = Literal["mechanic", "category"]
+
+
+class Tag(NamedTuple):
+    """
+    A board game tag (e.g. game mechanics and themes).
+
+    These are indexed separately so you can easily list them all for further filtering.
+    """
+
+    id: int
+    name: str
+    type: TagType
+
+
+GameOrTagType = TypeVar("GameOrTagType", Game, Tag)
 
 
 def die(msg: str) -> None:
@@ -390,6 +408,33 @@ def get_game_full_metadata(
     return games
 
 
+def get_tags_from_games(games: List[Game]) -> List[Tag]:
+    """
+    Get all the tags found in a list of games.
+    """
+    seen = {}
+    tags = []
+
+    def tag_from_entity_link(
+        entities: List[EntityLink], tag_type: TagType
+    ) -> Iterator[Tag]:
+        for entity in entities:
+            yield Tag(id=entity.id, name=entity.name, type=tag_type)
+
+    for game in games:
+        for tag in [
+            *tag_from_entity_link(game.mechanics, "mechanic"),
+            *tag_from_entity_link(game.categories, "category"),
+        ]:
+            if tag.id not in seen:
+                tags.append(tag)
+                seen[tag.id] = tag.name
+            else:
+                assert seen[tag.id] == tag.name, "found different tags with the same id"
+
+    return tags
+
+
 @click.group()
 def main() -> None:
     """
@@ -476,27 +521,18 @@ def run_ingest(
             )
             games = get_game_full_metadata(cache, executor, metas)
 
+    tags = get_tags_from_games(games)
+
     if not dry_run:
         assert es is not None, "elasticsearch connection required"
         if drop_index:
             print("Dropping old Elasticsearch index...")
-            es.indices.delete(index=ES_INDEX_NAME, ignore=[400, 404])
+            es.indices.delete(index=ES_GAME_INDEX_NAME, ignore=[400, 404])
+            es.indices.delete(index=ES_TAG_INDEX_NAME, ignore=[400, 404])
+        es.indices.create(index=ES_GAME_INDEX_NAME, ignore=400)
+        es.indices.create(index=ES_TAG_INDEX_NAME, ignore=400)
 
-        # Create an index template to index nested objects (instead of flattened ones).
-        es.indices.put_template(
-            name="boardgames-template",
-            body={
-                "index_patterns": [ES_INDEX_NAME],
-                "mappings": {
-                    "properties": {
-                        prop: {"type": "nested"} for prop in ES_NESTED_OBJECT_PROPS
-                    }
-                },
-            },
-        )
-        es.indices.create(index=ES_INDEX_NAME, ignore=400)
-
-    def games_to_delete() -> Iterator[Tuple[str, str]]:
+    def objects_to_delete(index: str, exclude: List[int]) -> Iterator[Tuple[str, str]]:
         """
         Finds all the old games (from previous indexing) that should be deleted.
 
@@ -508,18 +544,12 @@ def run_ingest(
         count = 0
         while True:
             res = es.search(
-                index=ES_INDEX_NAME,
+                index=index,
                 body={
                     "_source": ["name"],
                     "from": count,
                     "size": ES_MAX_SEARCH_WINDOW,
-                    "query": {
-                        "bool": {
-                            "must_not": [
-                                {"ids": {"values": [game.id for game in games]}}
-                            ]
-                        }
-                    },
+                    "query": {"bool": {"must_not": [{"ids": {"values": exclude}}]}},
                 },
             )
             hits = res["hits"]["hits"]
@@ -533,31 +563,55 @@ def run_ingest(
         """
         Generator of elasticsearch indexing actions.
         """
-        for i, game in enumerate(games):
-            print(
-                f"{'(dry run)' if dry_run else ''} "
-                f"Indexing '{game.name}' ({i + 1}/{len(games)})..."
-            )
+        def index_objects(
+            objs: List[GameOrTagType], index: str
+        ) -> Iterator[Dict[str, Any]]:
+            for i, obj in enumerate(objs):
+                print(
+                    f"{'(dry run) ' if dry_run else ''}"
+                    f"Indexing '{obj.name}' ({i + 1}/{len(objs)})..."
+                )
 
-            doc = game._asdict()
-            for key in doc:
-                if isinstance(doc[key], list):
-                    doc[key] = [link._asdict() for link in doc[key]]
+                doc = obj._asdict()
+                for key in doc:
+                    if isinstance(doc[key], list):
+                        doc[key] = [link._asdict() for link in doc[key]]
 
-            yield {
-                "_op_type": "index",
-                "_id": game.id,
-                "_index": ES_INDEX_NAME,
-                **doc,
-            }
+                yield {
+                    "_op_type": "index",
+                    "_id": obj.id,
+                    "_index": index,
+                    **doc,
+                }
 
-        for iden, name in games_to_delete():
-            print(f"{'(dry run)' if dry_run else ''} Deleting '{name}' ({iden})...")
-            yield {
-                "_op_type": "delete",
-                "_id": iden,
-                "_index": ES_INDEX_NAME,
-            }
+        def delete_objects(
+            to_delete: Iterable[Tuple[str, str]],
+            index: str,
+        ) -> Iterator[Dict[str, Any]]:
+            for iden, name in to_delete:
+                print(
+                    f"{'(dry run) ' if dry_run else ''}"
+                    f"Deleting '{name}' ({iden})..."
+                )
+                yield {"_op_type": "delete", "_id": iden, "_index": index}
+
+        print("Indexing games...")
+        yield from index_objects(games, ES_GAME_INDEX_NAME)
+        yield from delete_objects(
+            to_delete=objects_to_delete(
+                index=ES_GAME_INDEX_NAME, exclude=[game.id for game in games]
+            ),
+            index=ES_GAME_INDEX_NAME,
+        )
+
+        print("Indexing tags...")
+        yield from index_objects(tags, ES_TAG_INDEX_NAME)
+        yield from delete_objects(
+            to_delete=objects_to_delete(
+                index=ES_TAG_INDEX_NAME, exclude=[game.id for game in games]
+            ),
+            index=ES_TAG_INDEX_NAME,
+        )
 
     print("Ingesting BGG metadata into Elasticsearch...")
     if not dry_run:
@@ -573,7 +627,7 @@ def run_ingest(
 
     if not dry_run:
         assert es is not None, "elasticsearch connection required"
-        es.indices.refresh(index=ES_INDEX_NAME)
+        es.indices.refresh(index=ES_GAME_INDEX_NAME)
 
 
 @main.command("query")
@@ -591,7 +645,7 @@ def run_query(query_string: str, connection: str, offset: int, limit: int) -> No
     """
     es = Elasticsearch(connection)
     res = es.search(
-        index=ES_INDEX_NAME,
+        index=ES_GAME_INDEX_NAME,
         body={
             "from": offset,
             "size": limit,

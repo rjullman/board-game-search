@@ -185,13 +185,8 @@ const createTagMatchClause = (
   }
 
   return ids.map((id) => ({
-    nested: {
-      path,
-      query: {
-        bool: {
-          should: [{ match: { [`${path}.id`]: id } }],
-        },
-      },
+    bool: {
+      should: [{ term: { [`${path}.id`]: id } }],
     },
   }));
 };

@@ -105,7 +105,7 @@ const diff = (
         const value = equals(state[key], curValue) ? undefined : curValue;
         return [key, value];
       })
-      .filter((kv) => kv[1])
+      .filter((kv) => kv[1] !== undefined && kv[1] !== null)
   );
   if (Object.keys(diff).length !== 0) {
     return { ...state, ...diff };

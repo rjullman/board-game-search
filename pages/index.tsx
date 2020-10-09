@@ -84,7 +84,9 @@ const Topbar: React.FC<{
 };
 
 const HomePage: React.FC = () => {
-  const filters = useSelector((state: RootState) => state.filters);
+  const filters = useSelector((state: RootState) =>
+    state.filters.loaded ? state.filters.selected : undefined
+  );
   const [games, setGames] = useState<Game[]>([]);
   const [searchAfterKey, setSearchAfterKey] = useState<
     (string | number)[] | undefined
@@ -177,7 +179,7 @@ const HomePage: React.FC = () => {
         <SiteInfoSidebar />
       </Sidebar>
       <Topbar
-        numActiveFilters={countActiveFilters(filters)}
+        numActiveFilters={filters ? countActiveFilters(filters) : 0}
         onClickFilter={() => setFilterSidebarOpen(!filterSidebarOpen)}
         onClickAbout={() => setAboutSidebarOpen(!aboutSidebarOpen)}
       />

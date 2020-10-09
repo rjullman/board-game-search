@@ -224,7 +224,7 @@ const FilterByTags: React.FC<{
 const SearchFiltersMenu: React.FC<{
   instanceId: string;
 }> = ({ instanceId }) => {
-  const filters = useSelector((state: RootState) => state.filters);
+  const filters = useSelector((state: RootState) => state.filters.selected);
   const tags = useSelector((state: RootState) =>
     state.tags.loaded
       ? { mechanics: state.tags.mechanics, themes: state.tags.themes }

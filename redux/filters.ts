@@ -115,14 +115,22 @@ const diff = (
 
 const filters = createSlice({
   name: "filters",
-  initialState: DEFAULT_SEARCH_FILTERS,
+  initialState: { selected: DEFAULT_SEARCH_FILTERS, loaded: false },
   reducers: {
-    reset: (state) => update(diff(state, DEFAULT_SEARCH_FILTERS)),
-    update: (state, action: PayloadAction<UpdateSearchFilters>) =>
-      update(diff(state, action.payload)),
+    reset: (state) => ({
+      selected: update(diff(state.selected, DEFAULT_SEARCH_FILTERS)),
+      loaded: state.loaded,
+    }),
+    update: (state, action: PayloadAction<UpdateSearchFilters>) => ({
+      selected: update(diff(state.selected, action.payload)),
+      loaded: state.loaded,
+    }),
     loadFromQueryParams: (state) => {
       const search = Router.asPath.replace(/[^?]+/u, "");
-      return diff(state, decodeQueryParamsStr(search));
+      return {
+        selected: diff(state.selected, decodeQueryParamsStr(search)),
+        loaded: true,
+      };
     },
   },
 });

@@ -70,7 +70,7 @@ const Topbar: React.FC<{
             className="flex flex-row mx-auto sm:mx-0 min-w-0 items-center"
           >
             <IconDice className="w-10 h-10 ml-3 hidden sm:inline" />
-            <span className="px-2 text-xl font-mono truncate">
+            <span className="px-2 text-xl tracking-widest truncate">
               Board Game Search
             </span>
           </a>

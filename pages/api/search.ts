@@ -212,8 +212,8 @@ export default async (
       ].filter((clause) => clause !== undefined),
       query: {
         bool: {
+          must: [...createSearchKeywordsClause(req.query["keywords"])],
           should: [
-            ...createSearchKeywordsClause(req.query["keywords"]),
             ...createTagMatchClause("mechanics", req.query["mechanics"]),
             ...createTagMatchClause("categories", req.query["themes"]),
           ],

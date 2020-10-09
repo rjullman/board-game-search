@@ -1,15 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  useQueryParams,
-  BooleanParam,
-  StringParam,
-  DelimitedArrayParam,
-  DelimitedNumericArrayParam,
-} from "use-query-params";
+import React, { useState, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import classnames from "classnames";
 import Select from "react-select";
 
-import { Filters, SearchFilters, Tag, Tags } from "../lib/api";
+import { RootState } from "../redux/store";
+import { actions } from "../redux/filters";
+import { Filters, SearchFilters, Tag } from "../lib/api";
 
 import HelpTooltip from "./HelpTooltip";
 
@@ -17,129 +13,7 @@ import IconFilter from "../images/icon-filter.svg";
 
 import styles from "./SearchFiltersMenu.module.css";
 
-/**
- *  Default search filters
- *
- *  Always set array keys to be empty arrays. If you want a default selected
- *  array, the logic in useFiltersQueryParams will have to update first to do
- *  deep array equality comparison.
- **/
-const DEFAULT_SEARCH_FILTERS: SearchFilters = {
-  keywords: "",
-  sort: Filters.SortByRelevance,
-  reverse: false,
-  rank: Filters.RankAny,
-  rating: Filters.RatingAny,
-  ratingCount: Filters.RatingCountAny,
-  weight: [],
-  age: [],
-  playtime: [],
-  players: [],
-  mechanics: [],
-  themes: [],
-};
-
-/**
- *  Wrapper hook for using useQueryParams.
- *
- *  This wrapper improves upon withDefault (provided by the "use-query-params"
- *  package) with better type safety and patterns for SSR.
- **/
-const useFiltersQueryParams = (
-  fallbacks: SearchFilters
-): [SearchFilters, (filters?: SearchFilters) => void] => {
-  const [params, setParams] = useQueryParams({
-    keywords: StringParam,
-    sort: StringParam,
-    reverse: BooleanParam,
-    rank: StringParam,
-    rating: StringParam,
-    ratingCount: StringParam,
-    weight: DelimitedArrayParam,
-    age: DelimitedArrayParam,
-    playtime: DelimitedArrayParam,
-    players: DelimitedArrayParam,
-    mechanics: DelimitedNumericArrayParam,
-    themes: DelimitedNumericArrayParam,
-  });
-  const [state, setState] = useState<SearchFilters>(fallbacks);
-  const removeNulls = (arr: (string | null)[] | null | undefined) => {
-    if (!arr) {
-      return undefined;
-    }
-    return arr
-      .filter((item) => item !== null)
-      .map((item) => (item ? item : ""));
-  };
-  const removeNumberNulls = (arr: (number | null)[] | null | undefined) => {
-    if (!arr) {
-      return undefined;
-    }
-    return arr
-      .filter((item) => item !== null)
-      .map((item) => (item ? item : -1));
-  };
-  useEffect(
-    () => {
-      setState({
-        keywords: params.keywords || fallbacks.keywords,
-        sort: params.sort || fallbacks.sort,
-        reverse: params.reverse || fallbacks.reverse,
-        rank: params.rank || fallbacks.rank,
-        rating: params.rating || fallbacks.rating,
-        ratingCount: params.ratingCount || fallbacks.ratingCount,
-        weight: removeNulls(params.weight) || fallbacks.weight,
-        age: removeNulls(params.age) || fallbacks.age,
-        playtime: removeNulls(params.playtime) || fallbacks.playtime,
-        players: removeNulls(params.players) || fallbacks.players,
-        mechanics: removeNumberNulls(params.mechanics) || fallbacks.mechanics,
-        themes: removeNumberNulls(params.themes) || fallbacks.themes,
-      });
-    },
-    /* eslint-disable react-hooks/exhaustive-deps */
-    // Compare arrays with deep equality. Calling setState when values have not
-    // changed will cause the onChangeFilters callback to trigger spuriously,
-    // which may cause downstream code to update the filters menu (causing an
-    // infinite loop).
-    [JSON.stringify(params), JSON.stringify(fallbacks)]
-    /* eslint-enable react-hooks/exhaustive-deps */
-  );
-
-  const setParamsWrapper = useCallback(
-    (filters?: SearchFilters) => {
-      if (!filters) {
-        return setParams({}, "replace");
-      }
-
-      // Create a set of filters that useQueryParams accepts. We remove filters
-      // that are the default value so that they are removed from the query
-      // params instead of just being unset (e.g. "?players=").
-      const newFilters = Object.fromEntries(
-        Object.entries(filters)
-          .map(([key, value]) => {
-            if (key in fallbacks) {
-              const keyCast = key as keyof SearchFilters;
-              if (Array.isArray(value)) {
-                if (value.length === 0) {
-                  return [key, undefined];
-                }
-              } else if (fallbacks[keyCast] === value) {
-                return [key, undefined];
-              }
-            }
-            return [key, value];
-          })
-          .filter(([key, value]) => key !== undefined && value !== undefined)
-      );
-      setParams(newFilters, "replace");
-    },
-    [fallbacks, setParams]
-  );
-
-  return [state, setParamsWrapper];
-};
-
-const countActiveFilters = (filters: SearchFilters) => {
+export const countActiveFilters = (filters: SearchFilters): number => {
   const active = (
     filt?: string | string[],
     defaultValue: string | undefined = undefined
@@ -317,7 +191,7 @@ const FilterByTags: React.FC<{
     if (!options) {
       return undefined;
     }
-    return options.sort((a, b) => a.name.localeCompare(b.name));
+    return options.slice().sort((a, b) => a.name.localeCompare(b.name));
   }, [options]);
 
   return (
@@ -348,11 +222,15 @@ const FilterByTags: React.FC<{
 };
 
 const SearchFiltersMenu: React.FC<{
-  tags: Tags | undefined;
   instanceId: string;
-  onChangeFilters?: (filts: SearchFilters, numActive: number) => void;
-}> = ({ tags, instanceId, onChangeFilters }) => {
-  const [filters, setFilters] = useFiltersQueryParams(DEFAULT_SEARCH_FILTERS);
+}> = ({ instanceId }) => {
+  const filters = useSelector((state: RootState) => state.filters);
+  const tags = useSelector((state: RootState) =>
+    state.tags.loaded
+      ? { mechanics: state.tags.mechanics, themes: state.tags.themes }
+      : undefined
+  );
+  const dispatch = useDispatch();
 
   // Track if the initial render is complete in order to avoid calling
   // onChangeFilters twice during the initial load.
@@ -369,20 +247,14 @@ const SearchFiltersMenu: React.FC<{
   const [keywords, setKeywords] = useState<string>("");
   useEffect(() => {
     const timerId = setTimeout(() => {
-      setFilters({ ...filters, keywords });
+      dispatch(actions.update({ keywords }));
     }, 250);
     return () => clearTimeout(timerId);
-  }, [keywords, filters, setFilters]);
+  }, [keywords, dispatch]);
 
   useEffect(() => {
     setKeywords(filters.keywords);
   }, [filters.keywords]);
-
-  useEffect(() => {
-    if (onChangeFilters && init) {
-      onChangeFilters(filters, countActiveFilters(filters));
-    }
-  }, [filters, init, onChangeFilters]);
 
   return (
     <div className="w-100">
@@ -393,7 +265,7 @@ const SearchFiltersMenu: React.FC<{
         </div>
         <button
           className="pt-1 text-xs underline hover:opacity-75 focus:outline-none"
-          onClick={() => setFilters(undefined)}
+          onClick={() => dispatch(actions.reset())}
         >
           Clear all ({countActiveFilters(filters)})
         </button>
@@ -417,9 +289,7 @@ const SearchFiltersMenu: React.FC<{
             Filters.SortByWeight,
           ]}
           selected={[filters.sort]}
-          onChange={([sort]) => {
-            setFilters({ ...filters, sort });
-          }}
+          onChange={([sort]) => dispatch(actions.update({ sort }))}
         />
         <div className="mt-2 text-sm">
           <FilterGroup
@@ -428,9 +298,9 @@ const SearchFiltersMenu: React.FC<{
             values={["true"]}
             selected={[filters.reverse ? "true" : "false"]}
             disabled={filters.sort === Filters.SortByRelevance}
-            onChange={([reverse]) => {
-              setFilters({ ...filters, reverse: reverse === "true" });
-            }}
+            onChange={([reverse]) =>
+              dispatch(actions.update({ reverse: reverse === "true" }))
+            }
           />
         </div>
       </FilterSection>
@@ -439,7 +309,7 @@ const SearchFiltersMenu: React.FC<{
           options={tags && tags.mechanics}
           selected={filters.mechanics}
           instanceId={`mechanics-select-${instanceId}`}
-          onChange={(mechanics) => setFilters({ ...filters, mechanics })}
+          onChange={(mechanics) => dispatch(actions.update({ mechanics }))}
         />
       </FilterSection>
       <FilterSection label="Themes">
@@ -447,7 +317,7 @@ const SearchFiltersMenu: React.FC<{
           options={tags && tags.themes}
           selected={filters.themes}
           instanceId={`themes-select-${instanceId}`}
-          onChange={(themes) => setFilters({ ...filters, themes })}
+          onChange={(themes) => dispatch(actions.update({ themes }))}
         />
       </FilterSection>
       <FilterSection label="Players">
@@ -468,7 +338,7 @@ const SearchFiltersMenu: React.FC<{
             Filters.Players5Plus,
           ]}
           selected={filters.players}
-          onChange={(players) => setFilters({ ...filters, players })}
+          onChange={(players) => dispatch(actions.update({ players }))}
         />
       </FilterSection>
       <FilterSection
@@ -485,7 +355,7 @@ const SearchFiltersMenu: React.FC<{
             Filters.Weight4to5,
           ]}
           selected={filters.weight}
-          onChange={(weight) => setFilters({ ...filters, weight })}
+          onChange={(weight) => dispatch(actions.update({ weight }))}
         />
       </FilterSection>
       <FilterSection label="Age">
@@ -500,7 +370,7 @@ const SearchFiltersMenu: React.FC<{
             Filters.Age21Plus,
           ]}
           selected={filters.age}
-          onChange={(age) => setFilters({ ...filters, age })}
+          onChange={(age) => dispatch(actions.update({ age }))}
         />
       </FilterSection>
       <FilterSection label="Playtime">
@@ -514,7 +384,7 @@ const SearchFiltersMenu: React.FC<{
             Filters.Playtime120Plus,
           ]}
           selected={filters.playtime}
-          onChange={(playtime) => setFilters({ ...filters, playtime })}
+          onChange={(playtime) => dispatch(actions.update({ playtime }))}
         />
       </FilterSection>
       <FilterSection
@@ -531,9 +401,7 @@ const SearchFiltersMenu: React.FC<{
             Filters.RankTop100,
           ]}
           selected={[filters.rank]}
-          onChange={([rank]) => {
-            setFilters({ ...filters, rank });
-          }}
+          onChange={([rank]) => dispatch(actions.update({ rank }))}
         />
       </FilterSection>
       <FilterSection
@@ -550,9 +418,7 @@ const SearchFiltersMenu: React.FC<{
             Filters.Rating8Plus,
           ]}
           selected={[filters.rating]}
-          onChange={([rating]) => {
-            setFilters({ ...filters, rating });
-          }}
+          onChange={([rating]) => dispatch(actions.update({ rating }))}
         />
       </FilterSection>
       <FilterSection
@@ -569,9 +435,9 @@ const SearchFiltersMenu: React.FC<{
             Filters.RatingCount10000Plus,
           ]}
           selected={[filters.ratingCount]}
-          onChange={([ratingCount]) => {
-            setFilters({ ...filters, ratingCount });
-          }}
+          onChange={([ratingCount]) =>
+            dispatch(actions.update({ ratingCount }))
+          }
         />
       </FilterSection>
     </div>

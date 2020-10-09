@@ -1,73 +1,24 @@
 import React, { useEffect, useState, useCallback } from "react";
-import Head from "next/head";
+import { useDispatch, useSelector } from "react-redux";
 import InfiniteScroll from "react-infinite-scroller";
 import classnames from "classnames";
 
-import { search, loadTags, Game, Tags, SearchFilters } from "../lib/api";
+import { RootState } from "../redux/store";
+import { actions as filtersActions } from "../redux/filters";
+import { actions as tagsActions } from "../redux/tags";
+import { search, Game, SearchFilters } from "../lib/api";
 
 import GameDisplay from "../components/GameDisplay";
 import NoSearchResults from "../components/NoSearchResults";
-import SearchFiltersMenu from "../components/SearchFiltersMenu";
+import SearchFiltersMenu, {
+  countActiveFilters,
+} from "../components/SearchFiltersMenu";
 import SiteInfoSidebar from "../components/SiteInfoSidebar";
 import Sidebar from "../components/Sidebar";
 
 import IconDice from "../images/dice.svg";
 import IconFilter from "../images/icon-filter.svg";
 import IconInfo from "../images/icon-info-circle.svg";
-
-const HeadMetadata: React.FC = () => {
-  if (!process.env.NEXT_PUBLIC_CANONICAL_URL) {
-    throw new Error(
-      "NEXT_PUBLIC_CANONICAL_URL environment variable must be defined."
-    );
-  }
-  const url = process.env.NEXT_PUBLIC_CANONICAL_URL.replace(/\/+$/, "");
-  return (
-    <Head>
-      <title>Board Game Search</title>
-      <meta charSet="utf-8" />
-      <meta name="viewport" content="initial-scale=1.0, width=device-width" />
-      <meta name="robots" content="index, follow" />
-      <meta
-        name="description"
-        content="Easily search for and discover your next favorite board game! Our board game database is updated daily with the top 10,000 games."
-      />
-
-      <meta property="og:type" content="website" />
-      <meta property="og:title" content="Board Game Search" />
-      <meta
-        property="og:description"
-        content="Easily search for and discover your next favorite board game!"
-      />
-      <meta property="og:image" content={`${url}/logo.jpg`} />
-      <meta property="og:url" content={url} />
-
-      <link
-        rel="apple-touch-icon"
-        sizes="180x180"
-        href="/apple-touch-icon.png"
-      />
-      <link
-        rel="icon"
-        type="image/png"
-        sizes="32x32"
-        href="/favicon-32x32.png"
-      />
-      <link
-        rel="icon"
-        type="image/png"
-        sizes="16x16"
-        href="/favicon-16x16.png"
-      />
-      <link rel="manifest" href="/site.webmanifest" />
-      <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#3c366b" />
-      <meta name="apple-mobile-web-app-title" content="Board Game Search" />
-      <meta name="application-name" content="Board Game Search" />
-      <meta name="msapplication-TileColor" content="#9f00a7" />
-      <meta name="theme-color" content="#3c366b" />
-    </Head>
-  );
-};
 
 const Topbar: React.FC<{
   numActiveFilters: number;
@@ -133,8 +84,7 @@ const Topbar: React.FC<{
 };
 
 const HomePage: React.FC = () => {
-  const [filters, setFilters] = useState<SearchFilters | undefined>();
-  const [numActiveFilters, setNumActiveFilters] = useState<number>(0);
+  const filters = useSelector((state: RootState) => state.filters);
   const [games, setGames] = useState<Game[]>([]);
   const [searchAfterKey, setSearchAfterKey] = useState<
     (string | number)[] | undefined
@@ -143,14 +93,17 @@ const HomePage: React.FC = () => {
   const [filterSidebarOpen, setFilterSidebarOpen] = useState<boolean>(false);
   const [aboutSidebarOpen, setAboutSidebarOpen] = useState<boolean>(false);
 
-  const [tags, setTags] = useState<Tags | undefined>();
+  const dispatch = useDispatch();
+
+  // Initial load of tags from server.
   useEffect(() => {
-    const load = async () => {
-      const result = await loadTags();
-      setTags(result);
-    };
-    load();
-  }, []);
+    dispatch(tagsActions.fetchTags());
+  }, [dispatch]);
+
+  // Initial load of filters from query params.
+  useEffect(() => {
+    dispatch(filtersActions.loadFromQueryParams());
+  }, [dispatch]);
 
   const loadGames = useCallback(
     async (
@@ -209,21 +162,11 @@ const HomePage: React.FC = () => {
     }
   }, [filterSidebarOpen, aboutSidebarOpen]);
 
-  const onChangeFilters = useCallback((filts, active) => {
-    setFilters(filts);
-    setNumActiveFilters(active);
-  }, []);
-
   return (
     <>
-      <HeadMetadata />
       <Sidebar open={filterSidebarOpen} onSetOpen={setFilterSidebarOpen}>
         <div className="w-64 min-h-screen px-6 py-4 bg-gray-100">
-          <SearchFiltersMenu
-            tags={tags}
-            instanceId="drawer"
-            onChangeFilters={onChangeFilters}
-          />
+          <SearchFiltersMenu instanceId="drawer" />
         </div>
       </Sidebar>
       <Sidebar
@@ -234,7 +177,7 @@ const HomePage: React.FC = () => {
         <SiteInfoSidebar />
       </Sidebar>
       <Topbar
-        numActiveFilters={numActiveFilters}
+        numActiveFilters={countActiveFilters(filters)}
         onClickFilter={() => setFilterSidebarOpen(!filterSidebarOpen)}
         onClickAbout={() => setAboutSidebarOpen(!aboutSidebarOpen)}
       />
@@ -242,11 +185,7 @@ const HomePage: React.FC = () => {
         <div className="flex flex-row">
           <div className="fixed h-screen w-56 md:w-64 pt-20 pb-4 hidden sm:block">
             <div className="h-full overflow-y-auto pl-2 pr-4">
-              <SearchFiltersMenu
-                tags={tags}
-                instanceId="docked"
-                onChangeFilters={onChangeFilters}
-              />
+              <SearchFiltersMenu instanceId="docked" />
             </div>
           </div>
           <div className="flex-grow min-w-0 mt-16 mb-4 ml-0 sm:ml-56 md:ml-64 px-1 pt-4">

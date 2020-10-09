@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import classnames from "classnames";
 
-import { Game } from "../lib/api";
+import { RootState } from "../redux/store";
+import { actions } from "../redux/filters";
+import { Game, Tag } from "../lib/api";
 
 import HelpTooltip from "./HelpTooltip";
 
 import IconPhoto from "../images/icon-photo.svg";
 import IconShoppingBag from "../images/icon-shopping-bag.svg";
+import IconChevronDown from "../images/icon-chevron-down.svg";
 
 const AccordianSection: React.FC<{
   title: string;
@@ -23,7 +27,9 @@ const AccordianSection: React.FC<{
     }
     const updateHeight = () => {
       setScrollHeight(tagContainer.scrollHeight);
-      setOverflows(tagContainer.scrollHeight > tagContainer.clientHeight);
+      const overflowHeight = // 5rem in pixels
+        5 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+      setOverflows(tagContainer.clientHeight >= overflowHeight);
     };
     updateHeight();
     window.addEventListener("resize", updateHeight);
@@ -39,10 +45,23 @@ const AccordianSection: React.FC<{
   const show = expanded || !overflows;
 
   return (
-    <div className="py-2 first:pt-0" onClick={toggleAccordian}>
-      <div className="flex pb-1 items-center">
-        <h3 className="text-lg font-bold">{title}</h3>
-        {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
+    <div className="py-2 first:pt-0">
+      <div
+        className={classnames("flex pb-1 items-center justify-between", {
+          "cursor-pointer": overflows,
+        })}
+        onClick={toggleAccordian}
+      >
+        <div className="flex items-center">
+          <h3 className="text-lg font-bold">{title}</h3>
+          {tooltip && <HelpTooltip>{tooltip}</HelpTooltip>}
+        </div>
+        <IconChevronDown
+          className={classnames("w-6 h-6 transform transition-all", {
+            hidden: !overflows,
+            "rotate-180": expanded,
+          })}
+        />
       </div>
       <div
         ref={setTagContainer}
@@ -53,15 +72,20 @@ const AccordianSection: React.FC<{
         )}
         style={{ maxHeight: show ? `${scrollHeight + 25}px` : "5rem" }}
       >
+        {children}
         <div
+          onClick={() => {
+            if (!show) {
+              toggleAccordian();
+            }
+          }}
           className={classnames(
             "absolute inset-0 w-100 h-100",
             "bg-gradient-to-b from-transparent to-white",
             "transition ease-in-out",
-            show ? "opacity-0" : "opacity-100"
+            { hidden: show }
           )}
         />
-        {children}
       </div>
     </div>
   );
@@ -83,32 +107,31 @@ const LabeledStat: React.FC<{
   </div>
 );
 
-const TagList: React.FC<{
-  title: string;
-  tags: { id: number; name: string }[];
-  tooltip?: string;
-}> = ({ title, tags, tooltip }) => {
-  if (tags.length === 0) {
-    return <></>;
-  }
-  return (
-    <AccordianSection title={title} tooltip={tooltip}>
-      {tags.map((tag) => (
-        <div
-          key={tag.id}
-          className={classnames(
-            "inline-block py-1 px-3 mx-1 my-1",
-            "rounded-full bg-indigo-900 text-xs text-white font-semibold"
-          )}
-        >
-          {tag.name}
-        </div>
-      ))}
-    </AccordianSection>
-  );
-};
+const TagButton: React.FC<{
+  tag: Tag;
+  selected?: boolean;
+  href?: string;
+  onClick?: (tag: Tag) => void;
+}> = ({ tag, selected = false, href, onClick }) => (
+  <button
+    onClick={() => onClick && onClick(tag)}
+    className={classnames(
+      "inline-block py-1 px-3 mx-1 my-1",
+      "rounded-full text-xs text-white font-semibold",
+      "focus:outline-none",
+      "opacity-75",
+      "hover:opacity-100",
+      selected ? "bg-indigo-900" : "bg-indigo-700"
+    )}
+  >
+    {href ? <a href={href}>{tag.name}</a> : tag.name}
+  </button>
+);
 
 const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
+  const filters = useSelector((state: RootState) => state.filters.selected);
+  const dispatch = useDispatch();
+
   const approxInThousands = (num: number): string => {
     if (num > 10000) {
       return `${(num / 1000).toFixed(0)}k`;
@@ -217,21 +240,51 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
               ))}
           </div>
         </AccordianSection>
-        <TagList
-          title="Mechanics"
-          tags={game.mechanics}
-          tooltip="How you interact with the game. Games with similar mechanics will have similar rules, objectives, and challenges."
-        />
-        <TagList
-          title="Themes"
-          tags={game.categories}
-          tooltip="How the game looks and feels. Games with similar themes may have a similar graphical style, form factor, or plot."
-        />
-        <TagList
-          title="Expansions"
-          tags={game.expansions}
-          tooltip="Extensions to the game. This includes developer, fan, and promotional expansions some of which are no longer available for purchase."
-        />
+        {game.mechanics.length > 0 && (
+          <AccordianSection
+            title="Mechanics"
+            tooltip="How you interact with the game. Games with similar mechanics will have similar rules, objectives, and challenges."
+          >
+            {game.mechanics.map((tag) => (
+              <TagButton
+                key={tag.id}
+                tag={tag}
+                selected={filters.mechanics.includes(tag.id)}
+                onClick={() => dispatch(actions.toggleMechanic(tag.id))}
+              />
+            ))}
+          </AccordianSection>
+        )}
+        {game.categories.length > 0 && (
+          <AccordianSection
+            title="Themes"
+            tooltip="How the game looks and feels. Games with similar themes may have a similar graphical style, form factor, or plot."
+          >
+            {game.categories.map((tag) => (
+              <TagButton
+                key={tag.id}
+                tag={tag}
+                selected={filters.themes.includes(tag.id)}
+                onClick={() => dispatch(actions.toggleTheme(tag.id))}
+              />
+            ))}
+          </AccordianSection>
+        )}
+        {game.expansions.length > 0 && (
+          <AccordianSection
+            title="Expansions"
+            tooltip="Extensions to the game. This includes developer, fan, and promotional expansions some of which are no longer available for purchase."
+          >
+            {game.expansions.map((tag) => (
+              <TagButton
+                key={tag.id}
+                tag={tag}
+                selected={false}
+                href={`https://boardgamegeek.com/boardgame/${tag.id}/`}
+              />
+            ))}
+          </AccordianSection>
+        )}
       </div>
     </div>
   );

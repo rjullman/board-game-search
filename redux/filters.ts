@@ -125,6 +125,22 @@ const filters = createSlice({
       selected: update(diff(state.selected, action.payload)),
       loaded: state.loaded,
     }),
+    toggleMechanic: (state, action: PayloadAction<number>) => {
+      const index = state.selected.mechanics.indexOf(action.payload);
+      if (index !== -1) {
+        state.selected.mechanics.splice(index, 1);
+      } else {
+        state.selected.mechanics.push(action.payload);
+      }
+    },
+    toggleTheme: (state, action: PayloadAction<number>) => {
+      const index = state.selected.themes.indexOf(action.payload);
+      if (index !== -1) {
+        state.selected.themes.splice(index, 1);
+      } else {
+        state.selected.themes.push(action.payload);
+      }
+    },
     loadFromQueryParams: (state) => {
       const search = Router.asPath.replace(/[^?]+/u, "");
       return {

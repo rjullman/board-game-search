@@ -304,7 +304,10 @@ const SearchFiltersMenu: React.FC<{
           />
         </div>
       </FilterSection>
-      <FilterSection label="Mechanics">
+      <FilterSection
+        label="Mechanics"
+        tooltip="How you interact with the game. Games with similar mechanics will have similar rules, objectives, and challenges."
+      >
         <FilterByTags
           options={tags && tags.mechanics}
           selected={filters.mechanics}
@@ -312,7 +315,10 @@ const SearchFiltersMenu: React.FC<{
           onChange={(mechanics) => dispatch(actions.update({ mechanics }))}
         />
       </FilterSection>
-      <FilterSection label="Themes">
+      <FilterSection
+        label="Themes"
+        tooltip="How the game looks and feels. Games with similar themes may have a similar graphical style, form factor, or plot."
+      >
         <FilterByTags
           options={tags && tags.themes}
           selected={filters.themes}

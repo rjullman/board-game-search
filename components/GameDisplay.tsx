@@ -241,10 +241,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
           </div>
         </AccordianSection>
         {game.mechanics.length > 0 && (
-          <AccordianSection
-            title="Mechanics"
-            tooltip="How you interact with the game. Games with similar mechanics will have similar rules, objectives, and challenges."
-          >
+          <AccordianSection title="Mechanics">
             {game.mechanics.map((tag) => (
               <TagButton
                 key={tag.id}
@@ -256,10 +253,7 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
           </AccordianSection>
         )}
         {game.categories.length > 0 && (
-          <AccordianSection
-            title="Themes"
-            tooltip="How the game looks and feels. Games with similar themes may have a similar graphical style, form factor, or plot."
-          >
+          <AccordianSection title="Themes">
             {game.categories.map((tag) => (
               <TagButton
                 key={tag.id}

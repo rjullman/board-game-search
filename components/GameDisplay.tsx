@@ -11,6 +11,7 @@ import HelpTooltip from "./HelpTooltip";
 import IconPhoto from "../images/icon-photo.svg";
 import IconShoppingBag from "../images/icon-shopping-bag.svg";
 import IconChevronDown from "../images/icon-chevron-down.svg";
+import IconFilterFilled from "../images/icon-filter-filled.svg";
 
 const AccordianSection: React.FC<{
   title: string;
@@ -126,6 +127,26 @@ const TagButton: React.FC<{
   >
     {href ? <a href={href}>{tag.name}</a> : tag.name}
   </button>
+);
+
+const SimilarGamesButton: React.FC<{
+  text?: string;
+  onClick?: () => void;
+}> = ({ text = "Find Similar Games", onClick }) => (
+  <div>
+    <button
+      className={classnames(
+        "flex ml-1 mt-2 mb-1 py-1 px-2",
+        "bg-gray-200",
+        "text-gray-700 hover:bg-gray-300 hover:text-gray-900 focus:outline-none",
+        "rounded items-center",
+        "text-xs font-bold"
+      )}
+      onClick={onClick}
+    >
+      <IconFilterFilled className="w-4 h-4 mr-1" /> {text}
+    </button>
+  </div>
 );
 
 const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
@@ -250,6 +271,14 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
                 onClick={() => dispatch(actions.toggleMechanic(tag.id))}
               />
             ))}
+            <SimilarGamesButton
+              onClick={() =>
+                dispatch(
+                  actions.filterByMechanics(game.mechanics.map((tag) => tag.id))
+                )
+              }
+              text="Find Games with Similar Mechanics"
+            />
           </AccordianSection>
         )}
         {game.categories.length > 0 && (
@@ -262,6 +291,14 @@ const GameDisplay: React.FC<{ game: Game }> = ({ game }) => {
                 onClick={() => dispatch(actions.toggleTheme(tag.id))}
               />
             ))}
+            <SimilarGamesButton
+              onClick={() =>
+                dispatch(
+                  actions.filterByThemes(game.categories.map((tag) => tag.id))
+                )
+              }
+              text="Find Games with Similar Themes"
+            />
           </AccordianSection>
         )}
         {game.expansions.length > 0 && (

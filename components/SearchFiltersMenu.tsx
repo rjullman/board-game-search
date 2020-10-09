@@ -200,7 +200,7 @@ const FilterByTags: React.FC<{
       classNamePrefix="react-select"
       isMulti
       isSearchable
-      isClearable={false}
+      isClearable={true}
       hideSelectedOptions={false}
       isLoading={options === undefined}
       onChange={(values) => {

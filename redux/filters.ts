@@ -141,6 +141,17 @@ const filters = createSlice({
         state.selected.themes.push(action.payload);
       }
     },
+    filterByMechanics: (state, action: PayloadAction<number[]>) => ({
+      selected: update({
+        ...DEFAULT_SEARCH_FILTERS,
+        mechanics: action.payload,
+      }),
+      loaded: state.loaded,
+    }),
+    filterByThemes: (state, action: PayloadAction<number[]>) => ({
+      selected: update({ ...DEFAULT_SEARCH_FILTERS, themes: action.payload }),
+      loaded: state.loaded,
+    }),
     loadFromQueryParams: (state) => {
       const search = Router.asPath.replace(/[^?]+/u, "");
       return {

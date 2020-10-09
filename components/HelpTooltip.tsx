@@ -6,7 +6,7 @@ import IconHelp from "../images/icon-question-circle.svg";
 const HelpTooltip: React.FC = ({ children }) => {
   return (
     <Tooltip
-      html={<div className="w-32 text-xs">{children}</div>}
+      html={<div className="w-40 text-xs">{children}</div>}
       position="right-start"
       popperOptions={{
         modifiers: {

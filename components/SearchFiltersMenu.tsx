@@ -306,7 +306,7 @@ const SearchFiltersMenu: React.FC<{
       </FilterSection>
       <FilterSection
         label="Mechanics"
-        tooltip="How you interact with the game. Games with similar mechanics will have similar rules, objectives, and challenges."
+        tooltip="How you interact with the game. Games with similar mechanics will have similar rules, objectives, and challenges. This filter will allow partial matches, but prioritize matching more mechanics."
       >
         <FilterByTags
           options={tags && tags.mechanics}
@@ -317,7 +317,7 @@ const SearchFiltersMenu: React.FC<{
       </FilterSection>
       <FilterSection
         label="Themes"
-        tooltip="How the game looks and feels. Games with similar themes may have a similar graphical style, form factor, or plot."
+        tooltip="How the game looks and feels. Games with similar themes may have a similar graphical style, form factor, or plot. This filter will allow partial matches, but prioritize matching more themes."
       >
         <FilterByTags
           options={tags && tags.themes}

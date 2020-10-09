@@ -199,6 +199,10 @@ export default async (
     typeof req.query["reverse"] === "string"
       ? req.query["reverse"] === "1"
       : false;
+  const tagFilters = [
+    ...createTagMatchClause("mechanics", req.query["mechanics"]),
+    ...createTagMatchClause("categories", req.query["themes"]),
+  ];
   const { body: results } = await db.search({
     index: "boardgames",
     body: {
@@ -213,10 +217,8 @@ export default async (
       query: {
         bool: {
           must: [...createSearchKeywordsClause(req.query["keywords"])],
-          should: [
-            ...createTagMatchClause("mechanics", req.query["mechanics"]),
-            ...createTagMatchClause("categories", req.query["themes"]),
-          ],
+          should: tagFilters,
+          minimum_should_match: tagFilters.length > 0 ? 1 : 0,
           filter: [
             createFilterClause(AGE_RANGES, req.query["age"]),
             createFilterClause(RANK_RANGES, req.query["rank"]),

@@ -8,6 +8,7 @@
 
 [![Code Lint/Format Status](https://img.shields.io/github/workflow/status/rjullman/board-game-search/Lint%20Typescript%20and%20Python?label=Code%20Lint%2FFormat&logo=github)](https://github.com/rjullman/board-game-search/actions?query=workflow%3A%22Lint+Typescript+and+Python%22)
 [![Daily Database Update Status](https://img.shields.io/github/workflow/status/rjullman/board-game-search/Reindex%20BoardGameGeek?label=Daily%20Database%20Update&logo=github)](https://github.com/rjullman/board-game-search/actions?query=workflow%3A%22Reindex+BoardGameGeek%22)
+[![License](https://img.shields.io/github/license/rjullman/board-game-search)](./LICENSE)
 
 
 Use the tool live at

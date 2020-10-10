@@ -563,6 +563,7 @@ def run_ingest(
         """
         Generator of elasticsearch indexing actions.
         """
+
         def index_objects(
             objs: List[GameOrTagType], index: str
         ) -> Iterator[Dict[str, Any]]:

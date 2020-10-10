@@ -24,7 +24,7 @@ jobs:
       - name: Cache/restore Python dependencies
         uses: actions/cache@v2
         with:
-          path: ./env
+          path: ~/.cache/pip
           key: ${{ runner.os }}-build-python-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-build-python-
@@ -32,16 +32,12 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install Python dependencies
-        run: |
-          python3 -m venv env
-          . env/bin/activate
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Run reindex
         env:
           ELASTICSEARCH_ENDPOINT: ${{ secrets.ELASTICSEARCH_ENDPOINT }}
         run: |
-          . env/bin/activate
           python ingest.py run \
             --connection-from-env \
             --max-rank 9700 \

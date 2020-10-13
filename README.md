@@ -1,5 +1,5 @@
 <a href="https://boardgames.bobbyullman.com/" rel="nofollow">
-  <img src="./images/logo.png" width="200px" align="right" />
+  <img src="./images/logo.png" width="120px" align="right" />
 </a>
 
 # Board Game Search

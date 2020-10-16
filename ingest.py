@@ -609,7 +609,7 @@ def run_ingest(
         yield from index_objects(tags, ES_TAG_INDEX_NAME)
         yield from delete_objects(
             to_delete=objects_to_delete(
-                index=ES_TAG_INDEX_NAME, exclude=[game.id for game in games]
+                index=ES_TAG_INDEX_NAME, exclude=[tag.id for tag in tags]
             ),
             index=ES_TAG_INDEX_NAME,
         )

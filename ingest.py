@@ -279,6 +279,9 @@ def get_game_basic_metadata(
         rows = parsed.xpath("//tr[@id='row_']")
         assert isinstance(rows, list)
 
+        if not rows:
+            return metas, False
+
         for row in rows:
             assert isinstance(row, XMLElement)
             bgg_page_link = xml_get(
